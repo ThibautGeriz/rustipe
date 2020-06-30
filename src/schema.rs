@@ -1,28 +1,37 @@
 table! {
-    ingredients (id) {
-        id -> Int4,
-        recipe_id -> Int4,
+    ingredients (recipe_id, step_number) {
+        step_number -> Int4,
+        recipe_id -> Varchar,
         ingredient -> Text,
     }
 }
 
 table! {
-    instructions (id) {
-        id -> Int4,
-        recipe_id -> Int4,
+    instructions (recipe_id, step_number) {
         step_number -> Int4,
+        recipe_id -> Varchar,
         instruction -> Text,
     }
 }
 
 table! {
     recipes (id) {
-        id -> Int4,
+        id -> Varchar,
+        user_id -> Varchar,
         title -> Varchar,
+    }
+}
+
+table! {
+    users (id) {
+        id -> Varchar,
+        email -> Varchar,
+        password_hash -> Varchar,
     }
 }
 
 joinable!(ingredients -> recipes (recipe_id));
 joinable!(instructions -> recipes (recipe_id));
+joinable!(recipes -> users (user_id));
 
-allow_tables_to_appear_in_same_query!(ingredients, instructions, recipes,);
+allow_tables_to_appear_in_same_query!(ingredients, instructions, recipes, users,);

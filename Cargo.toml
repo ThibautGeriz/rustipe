@@ -7,9 +7,13 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-diesel = { version = "1.4.4", features = ["postgres"] }
+diesel = { version = "1.4.4", features = ["postgres", "r2d2"] }
 itertools = "0.8"
 dotenv = "0.15.0"
+juniper = "0.14.2"
+juniper_rocket = "0.5.2"
+rocket = "0.4.2"
+uuid = { version = "0.8", features = ["serde", "v4"] }
 
 
 [dev-dependencies.cargo-husky]
