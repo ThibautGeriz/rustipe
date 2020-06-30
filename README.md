@@ -16,8 +16,19 @@ rustup component add rustfmt
 
 ```sh
 cargo build # compile
-cargo run # run the binary
+cargo run --bin web_server # run the server
 cargo test # run the tests
 cargo fmt # format the code
 cargo clippy # run the linter
 ```
+
+## Run locally
+
+-   run postgreSQL locally
+-   create a file name `.env` with the following content
+
+```bash
+DATABASE_URL=postgres://localhost/diesel_demo
+```
+
+-   run `cargo run --bin web_server` to start the server and go to [localhost:8000](http://localhost:8000/)
