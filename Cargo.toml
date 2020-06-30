@@ -14,7 +14,7 @@ juniper = "0.14.2"
 juniper_rocket = "0.5.2"
 rocket = "0.4.2"
 uuid = { version = "0.8", features = ["serde", "v4"] }
-
+rocket_cors = "0.5.1"
 
 [dev-dependencies.cargo-husky]
 version = "1"
