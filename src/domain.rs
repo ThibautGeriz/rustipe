@@ -12,13 +12,14 @@ pub struct Recipe {
 
 pub trait RecipeDao {
     fn get_my_recipes(&self, user_id: String) -> Result<Vec<Recipe>, Box<dyn Error>>;
-    fn add_recipe(
+    fn add_recipe<'a>(
         &self,
-        user_id: String,
-        title: String,
-        instructions: Vec<String>,
-        ingredients: Vec<String>,
-    ) -> Result<(), Box<dyn Error>>;
+        id: &'a str,
+        user_id: &'a str,
+        title: &'a str,
+        instructions: Vec<&'a str>,
+        ingredients: Vec<&'a str>,
+    ) -> Result<Recipe, Box<dyn Error>>;
 }
 
 #[derive(PartialEq, Debug)]

@@ -5,6 +5,7 @@ extern crate itertools;
 extern crate juniper;
 extern crate juniper_rocket;
 extern crate recipes_backend;
+extern crate uuid;
 
 use rocket::{response::content, State};
 

@@ -1,6 +1,7 @@
 use crate::dao::DieselRecipeDao;
 use crate::domain::{Recipe, RecipeDao};
 use juniper::FieldResult;
+use uuid::Uuid;
 
 #[derive(juniper::GraphQLObject)]
 #[graphql(description = "A Recipe for a delicious dish")]
@@ -26,6 +27,7 @@ impl RecipeGraphQL {
 #[graphql(description = "A Recipe for a delicious dish")]
 struct NewRecipeGraphQL {
     title: String,
+    user_id: String,
     instructions: Vec<String>,
     ingredients: Vec<String>,
 }
@@ -71,11 +73,16 @@ pub struct Mutation;
     Context = Context,
 )]
 impl Mutation {
-    // fn createRecipe(context: &Context, new_recipe: NewRecipeGraphQL) -> FieldResult<Human> {
-    //   let db = executor.context().pool.get_connection()?;
-    //   let human: Human = db.insert_human(&new_human)?;
-    //   Ok(human)
-    // }
+    fn createRecipe(context: &Context, new_recipe: NewRecipeGraphQL) -> FieldResult<RecipeGraphQL> {
+        let recipe = (&context.dao).add_recipe(
+            Uuid::new_v4().to_string().as_str(),
+            new_recipe.user_id.as_str(),
+            new_recipe.title.as_str(),
+            new_recipe.instructions.iter().map(|s| s.as_str()).collect(),
+            new_recipe.ingredients.iter().map(|s| s.as_str()).collect(),
+        )?;
+        Ok(RecipeGraphQL::from(&recipe))
+    }
 }
 
 pub type Schema = juniper::RootNode<'static, Query, Mutation>;

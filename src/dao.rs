@@ -21,7 +21,7 @@ impl RecipeDao for DieselRecipeDao {
         use crate::schema::ingredients::dsl::step_number as ingredient_step_number;
         use crate::schema::instructions::dsl::step_number as instructions_step_number;
         use crate::schema::recipes::dsl::{recipes, user_id as recipes_user_id};
-        let connexion = self.pool.get().expect("Could not connect to the DB");
+        let connexion = self.pool.get()?;
 
         let recipes_results = recipes
             .filter(recipes_user_id.eq(user_id))
@@ -57,14 +57,56 @@ impl RecipeDao for DieselRecipeDao {
             .collect())
     }
 
-    fn add_recipe(
+    fn add_recipe<'a>(
         &self,
-        _user_id: String,
-        _title: String,
-        _instructions: Vec<String>,
-        _ingredients: Vec<String>,
-    ) -> Result<(), Box<dyn Error>> {
-        Ok(())
+        id: &'a str,
+        user_id: &'a str,
+        title: &'a str,
+        instructions: Vec<&'a str>,
+        ingredients: Vec<&'a str>,
+    ) -> Result<domain::Recipe, Box<dyn Error>> {
+        use crate::schema::{ingredients, instructions, recipes};
+        let connexion = self.pool.get()?;
+
+        let new_recipe = NewRecipe { id, title, user_id };
+
+        let inserted_recipe: Recipe = diesel::insert_into(recipes::table)
+            .values(&new_recipe)
+            .get_result(&connexion)?;
+
+        let new_instructions: Vec<NewInstruction> = instructions
+            .iter()
+            .enumerate()
+            .map(|(i, instuction)| NewInstruction {
+                recipe_id: id,
+                step_number: i as i32 + 1,
+                instruction: instuction,
+            })
+            .collect();
+
+        let inserted_instructions: Vec<Instruction> = diesel::insert_into(instructions::table)
+            .values(&new_instructions)
+            .get_results(&connexion)?;
+
+        let new_ingredients: Vec<NewIngredient> = ingredients
+            .iter()
+            .enumerate()
+            .map(|(i, ingredient)| NewIngredient {
+                recipe_id: id,
+                step_number: i as i32 + 1,
+                ingredient,
+            })
+            .collect();
+
+        let inserted_ingredients: Vec<Ingredient> = diesel::insert_into(ingredients::table)
+            .values(&new_ingredients)
+            .get_results(&connexion)?;
+
+        Ok(domain::Recipe::from(
+            inserted_recipe,
+            inserted_instructions,
+            inserted_ingredients,
+        ))
     }
 }
 
@@ -88,4 +130,18 @@ fn create_pool() -> Pool<ConnectionManager<PgConnection>> {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let manager = ConnectionManager::new(database_url);
     Pool::builder().max_size(10).build(manager).unwrap()
+}
+
+impl domain::Recipe {
+    fn from(recipe: Recipe, instructions: Vec<Instruction>, ingredients: Vec<Ingredient>) -> Self {
+        let id = Uuid::parse_str(recipe.id.as_str()).expect("Cannot parse UUID");
+        domain::Recipe {
+            id,
+            // TODO: remove those 4 unecessary clone
+            user_id: recipe.user_id.clone(),
+            title: recipe.title,
+            instructions: instructions.iter().map(|i| i.instruction.clone()).collect(),
+            ingredients: ingredients.iter().map(|i| i.ingredient.clone()).collect(),
+        }
+    }
 }

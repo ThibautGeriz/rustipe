@@ -17,6 +17,14 @@ pub struct Recipe {
     pub title: String,
 }
 
+#[derive(Insertable)]
+#[table_name = "recipes"]
+pub struct NewRecipe<'a> {
+    pub id: &'a str,
+    pub title: &'a str,
+    pub user_id: &'a str,
+}
+
 #[derive(Identifiable, Queryable, Associations, PartialEq, Debug)]
 #[belongs_to(Recipe)]
 #[primary_key(recipe_id, step_number)]
@@ -27,6 +35,14 @@ pub struct Ingredient {
     pub ingredient: String,
 }
 
+#[derive(Insertable)]
+#[table_name = "ingredients"]
+pub struct NewIngredient<'a> {
+    pub step_number: i32,
+    pub recipe_id: &'a str,
+    pub ingredient: &'a str,
+}
+
 #[derive(Identifiable, Queryable, Associations, PartialEq, Debug)]
 #[belongs_to(Recipe)]
 #[primary_key(recipe_id, step_number)]
@@ -35,4 +51,12 @@ pub struct Instruction {
     pub step_number: i32,
     pub recipe_id: String,
     pub instruction: String,
+}
+
+#[derive(Insertable)]
+#[table_name = "instructions"]
+pub struct NewInstruction<'a> {
+    pub step_number: i32,
+    pub recipe_id: &'a str,
+    pub instruction: &'a str,
 }
