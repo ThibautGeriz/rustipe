@@ -12,6 +12,8 @@ pub struct Recipe {
 
 pub trait RecipeDao {
     fn get_my_recipes(&self, user_id: String) -> Result<Vec<Recipe>, Box<dyn Error>>;
+    fn get_recipe(&self, id: String) -> Result<Recipe, Box<dyn Error>>;
+    fn delete_recipe(&self, id: String) -> Result<(), Box<dyn Error>>;
     fn add_recipe<'a>(
         &self,
         id: &'a str,

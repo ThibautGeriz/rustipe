@@ -65,6 +65,11 @@ impl Query {
         let recipes = (&context.dao).get_my_recipes(user_id)?;
         Ok(recipes.iter().map(|r| RecipeGraphQL::from(r)).collect())
     }
+
+    pub fn get_recipe(context: &Context, id: String) -> FieldResult<RecipeGraphQL> {
+        let recipe = (&context.dao).get_recipe(id)?;
+        Ok(RecipeGraphQL::from(&recipe))
+    }
 }
 
 pub struct Mutation;
@@ -82,6 +87,11 @@ impl Mutation {
             new_recipe.ingredients.iter().map(|s| s.as_str()).collect(),
         )?;
         Ok(RecipeGraphQL::from(&recipe))
+    }
+
+    fn deleteRecipe(context: &Context, id: String) -> FieldResult<String> {
+        let recipe = (&context.dao).delete_recipe(id.clone())?;
+        Ok(id)
     }
 }
 

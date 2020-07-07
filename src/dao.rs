@@ -57,6 +57,61 @@ impl RecipeDao for DieselRecipeDao {
             .collect())
     }
 
+    fn get_recipe(&self, id: String) -> Result<domain::Recipe, Box<dyn Error>> {
+        use crate::schema::ingredients::dsl::step_number as ingredient_step_number;
+        use crate::schema::instructions::dsl::step_number as instructions_step_number;
+        use crate::schema::recipes::dsl::{id as recipe_id, recipes};
+        let connexion = self.pool.get()?;
+
+        let recipes_results = recipes
+            .filter(recipe_id.eq(id))
+            .load::<Recipe>(&connexion)?;
+
+        let instructions_results = Instruction::belonging_to(&recipes_results)
+            .order_by(instructions_step_number.asc())
+            .load::<Instruction>(&connexion)?
+            .grouped_by(&recipes_results);
+
+        let ingredients_results = Ingredient::belonging_to(&recipes_results)
+            .order_by(ingredient_step_number.asc())
+            .load::<Ingredient>(&connexion)?
+            .grouped_by(&recipes_results);
+
+        let data = izip!(
+            &recipes_results,
+            &ingredients_results,
+            &instructions_results
+        );
+        let results: Vec<domain::Recipe> = data
+            .map(|(recipe, ingredients, instructions)| {
+                let id = Uuid::parse_str(recipe.id.as_str()).expect("Cannot parse UUID");
+                domain::Recipe {
+                    id,
+                    // TODO: remove those 4 unecessary clone (maybe move that in the diesel models)
+                    user_id: recipe.user_id.clone(),
+                    title: recipe.title.clone(),
+                    instructions: instructions.iter().map(|i| i.instruction.clone()).collect(),
+                    ingredients: ingredients.iter().map(|i| i.ingredient.clone()).collect(),
+                }
+            })
+            .collect();
+        Ok(results.into_iter().last().unwrap())
+    }
+
+    fn delete_recipe(&self, id: String) -> Result<(), Box<dyn Error>> {
+        use crate::schema::ingredients::dsl::{ingredients, recipe_id as ingredients_recipe_id};
+        use crate::schema::instructions::dsl::{instructions, recipe_id as instructions_recipe_id};
+        use crate::schema::recipes::dsl::{id as recipe_id, recipes};
+
+        let connexion = self.pool.get()?;
+        diesel::delete(ingredients.filter(ingredients_recipe_id.eq(id.clone())))
+            .execute(&connexion)?;
+        diesel::delete(instructions.filter(instructions_recipe_id.eq(id.clone())))
+            .execute(&connexion)?;
+        diesel::delete(recipes.filter(recipe_id.eq(id))).execute(&connexion)?;
+        Ok(())
+    }
+
     fn add_recipe<'a>(
         &self,
         id: &'a str,
@@ -103,7 +158,7 @@ impl RecipeDao for DieselRecipeDao {
             .get_results(&connexion)?;
 
         Ok(domain::Recipe::from(
-            inserted_recipe,
+            &inserted_recipe,
             inserted_instructions,
             inserted_ingredients,
         ))
@@ -133,13 +188,13 @@ fn create_pool() -> Pool<ConnectionManager<PgConnection>> {
 }
 
 impl domain::Recipe {
-    fn from(recipe: Recipe, instructions: Vec<Instruction>, ingredients: Vec<Ingredient>) -> Self {
+    fn from(recipe: &Recipe, instructions: Vec<Instruction>, ingredients: Vec<Ingredient>) -> Self {
         let id = Uuid::parse_str(recipe.id.as_str()).expect("Cannot parse UUID");
         domain::Recipe {
             id,
             // TODO: remove those 4 unecessary clone
             user_id: recipe.user_id.clone(),
-            title: recipe.title,
+            title: recipe.title.clone(),
             instructions: instructions.iter().map(|i| i.instruction.clone()).collect(),
             ingredients: ingredients.iter().map(|i| i.ingredient.clone()).collect(),
         }
