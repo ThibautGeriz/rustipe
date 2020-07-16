@@ -3,7 +3,7 @@ extern crate itertools;
 extern crate recipes_backend;
 
 use self::recipes_backend::dao::DieselRecipeDao;
-use self::recipes_backend::domain::RecipeDao;
+use self::recipes_backend::domain::recipes::ports::dao::RecipeDao;
 
 fn main() {
     let dao = DieselRecipeDao::new();

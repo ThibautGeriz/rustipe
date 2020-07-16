@@ -1,5 +1,6 @@
 use crate::dao::DieselRecipeDao;
-use crate::domain::{NewRecipe, Recipe, RecipeDao};
+use crate::domain::recipes::models::recipe::Recipe;
+use crate::domain::recipes::ports::dao::{NewRecipe, RecipeDao};
 use juniper::FieldResult;
 use uuid::Uuid;
 
