@@ -19,6 +19,14 @@ table! {
         id -> Varchar,
         user_id -> Varchar,
         title -> Varchar,
+        cook_time_in_minute -> Nullable<Int4>,
+        prep_time_in_minute -> Nullable<Int4>,
+        description -> Nullable<Varchar>,
+        image_url -> Nullable<Varchar>,
+        recipe_yield -> Nullable<Varchar>,
+        category -> Nullable<Varchar>,
+        cuisine -> Nullable<Varchar>,
+        imported_from -> Nullable<Varchar>,
     }
 }
 

@@ -15,6 +15,14 @@ pub struct Recipe {
     pub id: String,
     pub user_id: String,
     pub title: String,
+    pub cook_time_in_minute: Option<i32>,
+    pub prep_time_in_minute: Option<i32>,
+    pub description: Option<String>,
+    pub image_url: Option<String>,
+    pub recipe_yield: Option<String>,
+    pub category: Option<String>,
+    pub cuisine: Option<String>,
+    pub imported_from: Option<String>,
 }
 
 #[derive(Insertable)]
@@ -23,6 +31,14 @@ pub struct NewRecipe<'a> {
     pub id: &'a str,
     pub title: &'a str,
     pub user_id: &'a str,
+    pub description: Option<&'a str>,
+    pub cook_time_in_minute: Option<&'a i32>,
+    pub prep_time_in_minute: Option<&'a i32>,
+    pub image_url: Option<&'a str>,
+    pub recipe_yield: Option<&'a str>,
+    pub category: Option<&'a str>,
+    pub cuisine: Option<&'a str>,
+    pub imported_from: Option<&'a str>,
 }
 
 #[derive(Identifiable, Queryable, Associations, PartialEq, Debug)]

@@ -1,5 +1,6 @@
 use crate::diesel::prelude::*;
 use crate::domain;
+use crate::domain::NewRecipe as DomainNewRecipe;
 use crate::domain::RecipeDao;
 use crate::models::*;
 
@@ -42,14 +43,23 @@ impl RecipeDao for DieselRecipeDao {
             &ingredients_results,
             &instructions_results
         );
+        println!("recipes: {:?}", recipes_results);
         Ok(data
             .map(|(recipe, ingredients, instructions)| {
                 let id = Uuid::parse_str(recipe.id.as_str()).expect("Cannot parse UUID");
                 domain::Recipe {
                     id,
-                    // TODO: remove those 4 unecessary clone (maybe move that in the diesel models)
+                    // TODO: remove those unecessary clone (maybe move that in the diesel models)
                     user_id: recipe.user_id.clone(),
                     title: recipe.title.clone(),
+                    description: recipe.description.clone(),
+                    image_url: recipe.image_url.clone(),
+                    recipe_yield: recipe.recipe_yield.clone(),
+                    category: recipe.category.clone(),
+                    cuisine: recipe.cuisine.clone(),
+                    imported_from: recipe.imported_from.clone(),
+                    cook_time_in_minute: recipe.cook_time_in_minute,
+                    prep_time_in_minute: recipe.prep_time_in_minute,
                     instructions: instructions.iter().map(|i| i.instruction.clone()).collect(),
                     ingredients: ingredients.iter().map(|i| i.ingredient.clone()).collect(),
                 }
@@ -87,9 +97,17 @@ impl RecipeDao for DieselRecipeDao {
                 let id = Uuid::parse_str(recipe.id.as_str()).expect("Cannot parse UUID");
                 domain::Recipe {
                     id,
-                    // TODO: remove those 4 unecessary clone (maybe move that in the diesel models)
+                    // TODO: remove those unecessary clone (maybe move that in the diesel models)
                     user_id: recipe.user_id.clone(),
                     title: recipe.title.clone(),
+                    description: recipe.description.clone(),
+                    image_url: recipe.image_url.clone(),
+                    recipe_yield: recipe.recipe_yield.clone(),
+                    category: recipe.category.clone(),
+                    cuisine: recipe.cuisine.clone(),
+                    imported_from: recipe.imported_from.clone(),
+                    cook_time_in_minute: recipe.cook_time_in_minute,
+                    prep_time_in_minute: recipe.prep_time_in_minute,
                     instructions: instructions.iter().map(|i| i.instruction.clone()).collect(),
                     ingredients: ingredients.iter().map(|i| i.ingredient.clone()).collect(),
                 }
@@ -112,28 +130,34 @@ impl RecipeDao for DieselRecipeDao {
         Ok(())
     }
 
-    fn add_recipe<'a>(
-        &self,
-        id: &'a str,
-        user_id: &'a str,
-        title: &'a str,
-        instructions: Vec<&'a str>,
-        ingredients: Vec<&'a str>,
-    ) -> Result<domain::Recipe, Box<dyn Error>> {
+    fn add_recipe(&self, new_recipe: DomainNewRecipe) -> Result<domain::Recipe, Box<dyn Error>> {
         use crate::schema::{ingredients, instructions, recipes};
         let connexion = self.pool.get()?;
 
-        let new_recipe = NewRecipe { id, title, user_id };
+        let new_recipe_sql = NewRecipe {
+            id: new_recipe.id,
+            title: new_recipe.title,
+            user_id: new_recipe.user_id,
+            image_url: None,
+            description: new_recipe.description,
+            recipe_yield: new_recipe.recipe_yield,
+            category: new_recipe.category,
+            cuisine: new_recipe.cuisine,
+            prep_time_in_minute: new_recipe.prep_time_in_minute,
+            cook_time_in_minute: new_recipe.cook_time_in_minute,
+            imported_from: new_recipe.imported_from,
+        };
 
         let inserted_recipe: Recipe = diesel::insert_into(recipes::table)
-            .values(&new_recipe)
+            .values(&new_recipe_sql)
             .get_result(&connexion)?;
 
-        let new_instructions: Vec<NewInstruction> = instructions
+        let new_instructions: Vec<NewInstruction> = new_recipe
+            .instructions
             .iter()
             .enumerate()
             .map(|(i, instuction)| NewInstruction {
-                recipe_id: id,
+                recipe_id: new_recipe.id,
                 step_number: i as i32 + 1,
                 instruction: instuction,
             })
@@ -143,11 +167,12 @@ impl RecipeDao for DieselRecipeDao {
             .values(&new_instructions)
             .get_results(&connexion)?;
 
-        let new_ingredients: Vec<NewIngredient> = ingredients
+        let new_ingredients: Vec<NewIngredient> = new_recipe
+            .ingredients
             .iter()
             .enumerate()
             .map(|(i, ingredient)| NewIngredient {
-                recipe_id: id,
+                recipe_id: new_recipe.id,
                 step_number: i as i32 + 1,
                 ingredient,
             })
@@ -195,6 +220,14 @@ impl domain::Recipe {
             // TODO: remove those 4 unecessary clone
             user_id: recipe.user_id.clone(),
             title: recipe.title.clone(),
+            description: recipe.description.clone(),
+            image_url: recipe.image_url.clone(),
+            recipe_yield: recipe.recipe_yield.clone(),
+            category: recipe.category.clone(),
+            cuisine: recipe.cuisine.clone(),
+            imported_from: recipe.imported_from.clone(),
+            cook_time_in_minute: recipe.cook_time_in_minute,
+            prep_time_in_minute: recipe.prep_time_in_minute,
             instructions: instructions.iter().map(|i| i.instruction.clone()).collect(),
             ingredients: ingredients.iter().map(|i| i.ingredient.clone()).collect(),
         }
