@@ -1,7 +1,7 @@
 use crate::diesel::prelude::*;
 use crate::domain::recipes::models::recipe::Recipe as DomainRecipe;
 use crate::domain::recipes::ports::dao::{NewRecipe as DomainNewRecipe, RecipeDao};
-use crate::models::*;
+use crate::infrastructure::sql::models::*;
 
 use itertools::izip;
 use std::error::Error;
@@ -18,9 +18,11 @@ pub struct DieselRecipeDao {
 
 impl RecipeDao for DieselRecipeDao {
     fn get_my_recipes(&self, user_id: String) -> Result<Vec<DomainRecipe>, Box<dyn Error>> {
-        use crate::schema::ingredients::dsl::step_number as ingredient_step_number;
-        use crate::schema::instructions::dsl::step_number as instructions_step_number;
-        use crate::schema::recipes::dsl::{recipes, user_id as recipes_user_id};
+        use crate::infrastructure::sql::schema::ingredients::dsl::step_number as ingredient_step_number;
+        use crate::infrastructure::sql::schema::instructions::dsl::step_number as instructions_step_number;
+        use crate::infrastructure::sql::schema::recipes::dsl::{
+            recipes, user_id as recipes_user_id,
+        };
         let connexion = self.pool.get()?;
 
         let recipes_results = recipes
@@ -42,7 +44,6 @@ impl RecipeDao for DieselRecipeDao {
             &ingredients_results,
             &instructions_results
         );
-        println!("recipes: {:?}", recipes_results);
         Ok(data
             .map(|(recipe, ingredients, instructions)| {
                 let id = Uuid::parse_str(recipe.id.as_str()).expect("Cannot parse UUID");
@@ -67,9 +68,9 @@ impl RecipeDao for DieselRecipeDao {
     }
 
     fn get_recipe(&self, id: String) -> Result<DomainRecipe, Box<dyn Error>> {
-        use crate::schema::ingredients::dsl::step_number as ingredient_step_number;
-        use crate::schema::instructions::dsl::step_number as instructions_step_number;
-        use crate::schema::recipes::dsl::{id as recipe_id, recipes};
+        use crate::infrastructure::sql::schema::ingredients::dsl::step_number as ingredient_step_number;
+        use crate::infrastructure::sql::schema::instructions::dsl::step_number as instructions_step_number;
+        use crate::infrastructure::sql::schema::recipes::dsl::{id as recipe_id, recipes};
         let connexion = self.pool.get()?;
 
         let recipes_results = recipes
@@ -116,9 +117,13 @@ impl RecipeDao for DieselRecipeDao {
     }
 
     fn delete_recipe(&self, id: String) -> Result<(), Box<dyn Error>> {
-        use crate::schema::ingredients::dsl::{ingredients, recipe_id as ingredients_recipe_id};
-        use crate::schema::instructions::dsl::{instructions, recipe_id as instructions_recipe_id};
-        use crate::schema::recipes::dsl::{id as recipe_id, recipes};
+        use crate::infrastructure::sql::schema::ingredients::dsl::{
+            ingredients, recipe_id as ingredients_recipe_id,
+        };
+        use crate::infrastructure::sql::schema::instructions::dsl::{
+            instructions, recipe_id as instructions_recipe_id,
+        };
+        use crate::infrastructure::sql::schema::recipes::dsl::{id as recipe_id, recipes};
 
         let connexion = self.pool.get()?;
         diesel::delete(ingredients.filter(ingredients_recipe_id.eq(id.clone())))
@@ -130,7 +135,7 @@ impl RecipeDao for DieselRecipeDao {
     }
 
     fn add_recipe(&self, new_recipe: DomainNewRecipe) -> Result<DomainRecipe, Box<dyn Error>> {
-        use crate::schema::{ingredients, instructions, recipes};
+        use crate::infrastructure::sql::schema::{ingredients, instructions, recipes};
         let connexion = self.pool.get()?;
 
         let new_recipe_sql = NewRecipe {

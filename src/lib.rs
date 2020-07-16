@@ -1,10 +1,12 @@
+#![feature(decl_macro, proc_macro_hygiene)]
+
 #[macro_use]
 extern crate diesel;
 extern crate dotenv;
+extern crate itertools;
 extern crate juniper;
+extern crate juniper_rocket;
+extern crate uuid;
 
-pub mod dao;
 pub mod domain;
-pub mod graphql_schema;
-pub mod models;
-pub mod schema;
+pub mod infrastructure;

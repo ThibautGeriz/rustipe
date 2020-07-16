@@ -1,4 +1,4 @@
-use crate::schema::{ingredients, instructions, recipes, users};
+use crate::infrastructure::sql::schema::{ingredients, instructions, recipes, users};
 
 #[derive(Identifiable, Queryable, PartialEq, Debug)]
 #[table_name = "users"]
