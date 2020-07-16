@@ -5,7 +5,15 @@ use crate::infrastructure::sql::schema::{ingredients, instructions, recipes, use
 pub struct User {
     pub id: String,
     pub email: String,
-    pub user_id: String,
+    pub password_hash: String,
+}
+
+#[derive(Insertable)]
+#[table_name = "users"]
+pub struct NewUser<'a> {
+    pub id: &'a str,
+    pub email: &'a str,
+    pub password_hash: &'a str,
 }
 
 #[derive(Identifiable, Queryable, Associations, PartialEq, Debug)]

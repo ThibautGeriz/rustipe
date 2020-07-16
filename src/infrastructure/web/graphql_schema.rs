@@ -60,16 +60,18 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new() -> Context {
+    pub fn new(database_url: String) -> Context {
         Context {
-            dao: DieselRecipeDao::new(),
+            dao: DieselRecipeDao::new(database_url),
         }
     }
 }
 
 impl Default for Context {
     fn default() -> Self {
-        Context::new()
+        Context {
+            dao: DieselRecipeDao::default(),
+        }
     }
 }
 

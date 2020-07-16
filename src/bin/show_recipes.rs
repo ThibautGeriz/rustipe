@@ -6,7 +6,7 @@ use self::recipes_backend::domain::recipes::ports::dao::RecipeDao;
 use self::recipes_backend::infrastructure::sql::recipes::dao::DieselRecipeDao;
 
 fn main() {
-    let dao = DieselRecipeDao::new();
+    let dao = DieselRecipeDao::default();
     let recipes_results = dao
         .get_my_recipes(String::from("b8427f3a-ac40-4b62-9fe2-688b3b014161"))
         .expect("Cannot get recipes");

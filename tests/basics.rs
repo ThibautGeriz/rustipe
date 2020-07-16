@@ -5,10 +5,29 @@ use self::recipes_backend::infrastructure::web::server;
 use rocket::http::{ContentType, Status};
 use rocket::local::Client;
 
+use dotenv::dotenv;
+use std::env;
+
+fn get_database_url() -> String {
+    String::from(
+        env::var("TEST_DATABASE_URL")
+            .or_else(|_e| {
+                dotenv().ok();
+                env::var("TEST_DATABASE_URL")
+            })
+            .expect("TEST_DATABASE_URL must be set"),
+    )
+}
+
+fn get_rocket_client() -> Client {
+    let database_url = get_database_url();
+    Client::new(server::get_server(database_url)).expect("valid rocket instance")
+}
+
 #[test]
 fn test_get_graphql_playground() {
     // given
-    let client = Client::new(server::get_server()).expect("valid rocket instance");
+    let client = get_rocket_client();
 
     // when
     let mut response = client.get("/").dispatch();
@@ -27,7 +46,7 @@ fn test_get_graphql_playground() {
 #[test]
 fn test_api_version() {
     // given
-    let client = Client::new(server::get_server()).expect("valid rocket instance");
+    let client = get_rocket_client();
 
     // when
     let mut response = client

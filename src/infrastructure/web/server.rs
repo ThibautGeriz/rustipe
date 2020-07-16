@@ -4,9 +4,9 @@ use rocket_cors::{AllowedHeaders, AllowedOrigins, Cors, CorsOptions};
 
 use crate::infrastructure::web::graphql_schema::{Context, Mutation, Query, Schema};
 
-pub fn get_server() -> Rocket {
+pub fn get_server(database_url: String) -> Rocket {
     rocket::ignite()
-        .manage(Context::new())
+        .manage(Context::new(database_url))
         .manage(Schema::new(Query, Mutation))
         .mount(
             "/",
@@ -15,8 +15,8 @@ pub fn get_server() -> Rocket {
         .attach(make_cors())
 }
 
-pub fn start_server() {
-    get_server().launch();
+pub fn start_server(database_url: String) {
+    get_server(database_url).launch();
 }
 
 #[rocket::get("/")]
