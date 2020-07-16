@@ -195,23 +195,22 @@ impl RecipeDao for DieselRecipeDao {
 }
 
 impl DieselRecipeDao {
-    pub fn new() -> DieselRecipeDao {
+    pub fn new(database_url: String) -> DieselRecipeDao {
         DieselRecipeDao {
-            pool: create_pool(),
+            pool: create_pool(database_url),
         }
     }
 }
 
 impl Default for DieselRecipeDao {
     fn default() -> Self {
-        DieselRecipeDao::new()
+        dotenv().ok();
+        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+        DieselRecipeDao::new(database_url)
     }
 }
 
-fn create_pool() -> Pool<ConnectionManager<PgConnection>> {
-    dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+fn create_pool(database_url: String) -> Pool<ConnectionManager<PgConnection>> {
     let manager = ConnectionManager::new(database_url);
     Pool::builder().max_size(10).build(manager).unwrap()
 }
