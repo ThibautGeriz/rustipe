@@ -1,10 +1,10 @@
 use rocket::http::Method;
-use rocket::{response::content, State};
+use rocket::{response::content, Rocket, State};
 use rocket_cors::{AllowedHeaders, AllowedOrigins, Cors, CorsOptions};
 
 use crate::infrastructure::web::graphql_schema::{Context, Mutation, Query, Schema};
 
-pub fn start_server() {
+pub fn get_server() -> Rocket {
     rocket::ignite()
         .manage(Context::new())
         .manage(Schema::new(Query, Mutation))
@@ -13,7 +13,10 @@ pub fn start_server() {
             rocket::routes![graphiql, get_graphql_handler, post_graphql_handler],
         )
         .attach(make_cors())
-        .launch();
+}
+
+pub fn start_server() {
+    get_server().launch();
 }
 
 #[rocket::get("/")]
