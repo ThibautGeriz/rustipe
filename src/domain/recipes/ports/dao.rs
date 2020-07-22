@@ -15,6 +15,7 @@ pub struct NewRecipe<'a> {
     pub instructions: Vec<&'a str>,
     pub ingredients: Vec<&'a str>,
     pub imported_from: Option<&'a str>,
+    pub image_url: Option<&'a str>,
 }
 
 pub trait RecipeDao {

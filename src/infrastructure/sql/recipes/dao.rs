@@ -142,7 +142,7 @@ impl RecipeDao for DieselRecipeDao {
             id: new_recipe.id,
             title: new_recipe.title,
             user_id: new_recipe.user_id,
-            image_url: None,
+            image_url: new_recipe.image_url,
             description: new_recipe.description,
             recipe_yield: new_recipe.recipe_yield,
             category: new_recipe.category,

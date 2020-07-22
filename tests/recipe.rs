@@ -26,7 +26,6 @@ fn get_database_url() -> String {
 }
 fn get_rocket_client() -> Client {
     let url = get_database_url();
-    println!("{:?}", url);
     Client::new(server::get_server(url)).expect("valid rocket instance")
 }
 
