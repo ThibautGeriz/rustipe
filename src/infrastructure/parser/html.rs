@@ -92,7 +92,7 @@ impl SelectParser {
             instructions,
             ingredients,
             imported_from: Some(String::from(url)),
-            image_url: self.get_string_field(&recipe["image"]),
+            image_url: self.get_image(&recipe["image"]),
         };
         Ok(r)
     }
@@ -104,11 +104,25 @@ impl SelectParser {
     }
 
     fn get_string_field(&self, value: &Value) -> Option<String> {
-        value
-            .as_str()
-            .map(|s| s.trim())
-            .filter(|s| !s.is_empty())
-            .map(String::from)
+        if value.is_f64() {
+            value.as_f64().map(|n| n.to_string())
+        } else if value.is_i64() {
+            value.as_i64().map(|n| n.to_string())
+        } else {
+            value
+                .as_str()
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .map(String::from)
+        }
+    }
+
+    fn get_image(&self, value: &Value) -> Option<String> {
+        if value.is_object() {
+            self.get_string_field(&value["url"])
+        } else {
+            self.get_string_field(value)
+        }
     }
 }
 
@@ -197,5 +211,30 @@ mod tests {
             recipe.title,
             String::from("Lasagnes : la meilleure recette")
         );
+    }
+
+    #[test]
+    fn parsing_taste_com_au() {
+        // given
+        let html = fs::read_to_string("./src/infrastructure/parser/__data__/taste_com_au.html")
+            .expect("Something went wrong reading the file");
+        let parser = SelectParser::new();
+        let user_id = String::from("some_user_id");
+        let url = "https://www.taste.com.au/recipes/better-you-chicken-cacciatore/47u4vq3q";
+
+        // when
+        let recipe = parser
+            .parse_from_json_ld(url, html.as_str(), user_id.clone())
+            .expect("Can parse recipe");
+
+        // then
+        assert_eq!(recipe.user_id, user_id);
+        assert_eq!(recipe.imported_from, Some(String::from(url)));
+        assert_eq!(
+            recipe.title,
+            String::from("Better-for-you chicken cacciatore")
+        );
+        assert_eq!(recipe.recipe_yield, Some(String::from("6")));
+        assert_eq!(recipe.image_url, Some(String::from("https://img.taste.com.au/UBlf4nO-/taste/2018/05/better-for-you-chicken-cacciatore-137669-2.jpg")));
     }
 }
