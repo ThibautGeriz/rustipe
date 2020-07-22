@@ -38,24 +38,28 @@ impl SelectParser {
         user_id: String,
     ) -> Result<Recipe, Box<dyn Error>> {
         let document = Document::from(html);
-        let recipe: Value = document
+        let mut recipe: Value = document
             .find(Name("script").and(Attr("type", "application/ld+json")))
             .map(|n| n.text())
             .map(|t| {
                 let v: Value = serde_json::from_str(&t).unwrap();
                 v
             })
-            .find(|json| json["@type"] == "Recipe")
+            .find(|json| json["@type"] == "Recipe" || json[0]["@type"] == "Recipe")
             .expect("Website not supported");
+
+        if recipe.is_array() {
+            recipe = recipe[0].clone();
+        }
 
         let instructions: Vec<String> = recipe["recipeInstructions"]
             .as_array()
             .expect("Impossible to retrieve instructions")
             .iter()
             .map(|i| {
+                let text = if i.is_object() { &i["text"] } else { i };
                 String::from(
-                    i["text"]
-                        .as_str()
+                    text.as_str()
                         .expect("Impossible to retrieve instructions")
                         .trim(),
                 )
@@ -169,5 +173,29 @@ mod tests {
         );
         assert_eq!(recipe.cuisine, None);
         assert_eq!(recipe.recipe_yield, Some(String::from("1 pâte")));
+    }
+
+    #[test]
+    fn parsing_journal_des_femmes() {
+        // given
+        let html =
+            fs::read_to_string("./src/infrastructure/parser/__data__/journal_des_femmes.html")
+                .expect("Something went wrong reading the file");
+        let parser = SelectParser::new();
+        let user_id = String::from("some_user_id");
+        let url = "https://cuisine.journaldesfemmes.fr/recette/313738-lasagnes-a-la-bolognaise";
+
+        // when
+        let recipe = parser
+            .parse_from_json_ld(url, html.as_str(), user_id.clone())
+            .expect("Can parse recipe");
+
+        // then
+        assert_eq!(recipe.user_id, user_id);
+        assert_eq!(recipe.imported_from, Some(String::from(url)));
+        assert_eq!(
+            recipe.title,
+            String::from("Lasagnes : la meilleure recette")
+        );
     }
 }
