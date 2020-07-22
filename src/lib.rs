@@ -3,6 +3,7 @@
 #[macro_use]
 extern crate diesel;
 extern crate dotenv;
+extern crate iso8601_duration;
 extern crate itertools;
 extern crate juniper;
 extern crate juniper_rocket;

@@ -1,5 +1,6 @@
+use crate::domain::recipes::interactors::recipe::RecipeInteractor;
 use crate::domain::recipes::models::recipe::Recipe;
-use crate::domain::recipes::ports::dao::{NewRecipe, RecipeDao};
+use crate::infrastructure::parser::html::SelectParser;
 use crate::infrastructure::sql::recipes::dao::DieselRecipeDao;
 use juniper::FieldResult;
 use uuid::Uuid;
@@ -56,13 +57,16 @@ struct NewRecipeGraphQL {
 }
 
 pub struct Context {
-    dao: DieselRecipeDao,
+    recipe_interactor: RecipeInteractor,
 }
 
 impl Context {
     pub fn new(database_url: String) -> Context {
         Context {
-            dao: DieselRecipeDao::new(database_url),
+            recipe_interactor: RecipeInteractor {
+                dao: Box::new(DieselRecipeDao::new(database_url)),
+                parser: Box::new(SelectParser::new()),
+            },
         }
     }
 }
@@ -70,7 +74,10 @@ impl Context {
 impl Default for Context {
     fn default() -> Self {
         Context {
-            dao: DieselRecipeDao::default(),
+            recipe_interactor: RecipeInteractor {
+                dao: Box::new(DieselRecipeDao::default()),
+                parser: Box::new(SelectParser::default()),
+            },
         }
     }
 }
@@ -87,12 +94,12 @@ impl Query {
         "1.0"
     }
     pub fn get_my_recipes(context: &Context, user_id: String) -> FieldResult<Vec<RecipeGraphQL>> {
-        let recipes = (&context.dao).get_my_recipes(user_id)?;
+        let recipes = (&context.recipe_interactor).get_my_recipes(user_id)?;
         Ok(recipes.iter().map(|r| RecipeGraphQL::from(r)).collect())
     }
 
     pub fn get_recipe(context: &Context, id: String) -> FieldResult<RecipeGraphQL> {
-        let recipe = (&context.dao).get_recipe(id)?;
+        let recipe = (&context.recipe_interactor).get_recipe(id)?;
         Ok(RecipeGraphQL::from(&recipe))
     }
 }
@@ -104,26 +111,32 @@ pub struct Mutation;
 )]
 impl Mutation {
     fn createRecipe(context: &Context, new_recipe: NewRecipeGraphQL) -> FieldResult<RecipeGraphQL> {
-        let recipe = (&context.dao).add_recipe(NewRecipe {
-            id: Uuid::new_v4().to_string().as_str(),
-            user_id: new_recipe.user_id.as_str(),
-            title: new_recipe.title.as_str(),
-            description: new_recipe.description.as_deref(),
-            recipe_yield: new_recipe.recipe_yield.as_deref(),
-            category: new_recipe.category.as_deref(),
-            cuisine: new_recipe.cuisine.as_deref(),
-            prep_time_in_minute: (&new_recipe.prep_time_in_minute).as_ref(),
-            cook_time_in_minute: (&new_recipe.cook_time_in_minute).as_ref(),
-            instructions: new_recipe.instructions.iter().map(|s| s.as_str()).collect(),
-            ingredients: new_recipe.ingredients.iter().map(|s| s.as_str()).collect(),
-            imported_from: new_recipe.imported_from.as_deref(),
+        let recipe = (&context.recipe_interactor).add_recipe(Recipe {
+            id: Uuid::new_v4(),
+            user_id: new_recipe.user_id,
+            title: new_recipe.title,
+            description: new_recipe.description,
+            recipe_yield: new_recipe.recipe_yield,
+            category: new_recipe.category,
+            cuisine: new_recipe.cuisine,
+            prep_time_in_minute: new_recipe.prep_time_in_minute,
+            cook_time_in_minute: new_recipe.cook_time_in_minute,
+            instructions: new_recipe.instructions,
+            ingredients: new_recipe.ingredients,
+            imported_from: new_recipe.imported_from,
+            image_url: new_recipe.image_url,
         })?;
         Ok(RecipeGraphQL::from(&recipe))
     }
 
     fn deleteRecipe(context: &Context, id: String) -> FieldResult<String> {
-        let recipe = (&context.dao).delete_recipe(id.clone())?;
+        (&context.recipe_interactor).delete_recipe(id.clone())?;
         Ok(id)
+    }
+
+    fn importRecipe(context: &Context, url: String, user_id: String) -> FieldResult<RecipeGraphQL> {
+        let recipe = (&context.recipe_interactor).import_from(url, user_id)?;
+        Ok(RecipeGraphQL::from(&recipe))
     }
 }
 

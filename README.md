@@ -6,7 +6,7 @@ API to expose recipe stored in Postgres
 
 [Install RUST](https://www.rust-lang.org/en-US/install.html):
 
-```sh
+```bash
 curl https://sh.rustup.rs -sSf | sh
 rustup default nightly # use nightly for rocket
 rustup component add clippy # install linter
@@ -25,10 +25,10 @@ psql postgres --command "CREATE DATABASE test_db"
 
 ## Commands
 
-```sh
+```bash
 cargo build # compile
 cargo run --bin web_server # run the server
-cargo test -- --test-threads=1# run the tests
+cargo test -- --test-threads=1 # run the tests
 cargo fmt # format the code
 cargo clippy # run the linter
 ```
