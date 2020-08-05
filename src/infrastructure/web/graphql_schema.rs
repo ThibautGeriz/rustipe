@@ -1,7 +1,9 @@
 use crate::domain::recipes::interactors::recipe::RecipeInteractor;
 use crate::domain::recipes::models::recipe::Recipe;
+use crate::domain::users::interactors::user::UserInteractor;
 use crate::infrastructure::parser::html::SelectParser;
 use crate::infrastructure::sql::recipes::dao::DieselRecipeDao;
+use crate::infrastructure::sql::users::dao::DieselUserDao;
 use juniper::FieldResult;
 use uuid::Uuid;
 
@@ -58,14 +60,18 @@ struct NewRecipeGraphQL {
 
 pub struct Context {
     recipe_interactor: RecipeInteractor,
+    user_interactor: UserInteractor,
 }
 
 impl Context {
     pub fn new(database_url: String) -> Context {
         Context {
             recipe_interactor: RecipeInteractor {
-                dao: Box::new(DieselRecipeDao::new(database_url)),
+                dao: Box::new(DieselRecipeDao::new(database_url.clone())),
                 parser: Box::new(SelectParser::new()),
+            },
+            user_interactor: UserInteractor {
+                dao: Box::new(DieselUserDao::new(database_url)),
             },
         }
     }
@@ -77,6 +83,9 @@ impl Default for Context {
             recipe_interactor: RecipeInteractor {
                 dao: Box::new(DieselRecipeDao::default()),
                 parser: Box::new(SelectParser::default()),
+            },
+            user_interactor: UserInteractor {
+                dao: Box::new(DieselUserDao::default()),
             },
         }
     }
@@ -137,6 +146,17 @@ impl Mutation {
     fn importRecipe(context: &Context, url: String, user_id: String) -> FieldResult<RecipeGraphQL> {
         let recipe = (&context.recipe_interactor).import_from(url, user_id)?;
         Ok(RecipeGraphQL::from(&recipe))
+    }
+
+    fn signup(context: &Context, email: String, password: String) -> FieldResult<String> {
+        let id = Uuid::new_v4();
+        let user = (&context.user_interactor).signup(id, email, password)?;
+        Ok(user.id.to_hyphenated().to_string())
+    }
+
+    fn signin(context: &Context, email: String, password: String) -> FieldResult<String> {
+        let user = (&context.user_interactor).signin(email, password)?;
+        Ok(user.id.to_hyphenated().to_string())
     }
 }
 

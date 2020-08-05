@@ -7,6 +7,7 @@ extern crate iso8601_duration;
 extern crate itertools;
 extern crate juniper;
 extern crate juniper_rocket;
+extern crate ring;
 extern crate uuid;
 
 pub mod domain;
