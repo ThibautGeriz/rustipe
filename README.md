@@ -13,7 +13,8 @@ rustup component add clippy # install linter
 rustup component add rustfmt # install formatter
 cargo install diesel_cli # install ORM CLI
 echo "DATABASE_URL=postgres://localhost/local_recipe
-TEST_DATABASE_URL=postgres://localhost/test_db" > .env # setup local conf
+TEST_DATABASE_URL=postgres://localhost/test_db
+JWT_SECRET=secret" > .env # setup local conf
 ```
 
 You will also need to [install postgresSQL](https://www.postgresql.org/download/) and init 2 database

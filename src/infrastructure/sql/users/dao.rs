@@ -52,6 +52,7 @@ impl UserDao for DieselUserDao {
             .filter(db_password_hash.eq(password_hash))
             .load::<User>(&connexion)?;
 
+        println!("{:?}", &users_results);
         let user: &User = users_results.first().ok_or(UserError::BadCredentials)?;
         Ok(DomainUser {
             id: Uuid::parse_str(user.id.as_str()).expect("Cannot parse UUID"),

@@ -21,6 +21,7 @@ fn get_database_url() -> String {
 
 fn get_rocket_client() -> Client {
     let database_url = get_database_url();
+    env::set_var("JWT_SECRET", "SECRET");
     Client::new(server::get_server(database_url)).expect("valid rocket instance")
 }
 

@@ -4,6 +4,7 @@ use crate::domain::users::interactors::user::UserInteractor;
 use crate::infrastructure::parser::html::SelectParser;
 use crate::infrastructure::sql::recipes::dao::DieselRecipeDao;
 use crate::infrastructure::sql::users::dao::DieselUserDao;
+use crate::infrastructure::web::jwt::generate_header;
 use juniper::FieldResult;
 use uuid::Uuid;
 
@@ -151,12 +152,14 @@ impl Mutation {
     fn signup(context: &Context, email: String, password: String) -> FieldResult<String> {
         let id = Uuid::new_v4();
         let user = (&context.user_interactor).signup(id, email, password)?;
-        Ok(user.id.to_hyphenated().to_string())
+        let jwt_token = generate_header(user)?;
+        Ok(jwt_token)
     }
 
     fn signin(context: &Context, email: String, password: String) -> FieldResult<String> {
         let user = (&context.user_interactor).signin(email, password)?;
-        Ok(user.id.to_hyphenated().to_string())
+        let jwt_token = generate_header(user)?;
+        Ok(jwt_token)
     }
 }
 
