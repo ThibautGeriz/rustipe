@@ -17,18 +17,17 @@ use std::env;
 
 fn get_database_url() -> String {
     String::from(
-        env::var("TEST_DATABASE_URL")
+        env::var("DATABASE_URL")
             .or_else(|_e| {
                 dotenv().ok();
-                env::var("TEST_DATABASE_URL")
+                env::var("DATABASE_URL")
             })
-            .expect("TEST_DATABASE_URL must be set"),
+            .expect("DATABASE_URL must be set"),
     )
 }
 fn get_rocket_client() -> Client {
-    let url = get_database_url();
     env::set_var("JWT_SECRET", "SECRET");
-    Client::new(server::get_server(url)).expect("valid rocket instance")
+    Client::new(server::get_server()).expect("valid rocket instance")
 }
 
 pub fn establish_connection() -> PgConnection {
@@ -46,6 +45,7 @@ fn clean_db(connexion: &PgConnection) -> Result<(), Box<dyn Error>> {
 fn test_signup() {
     // given
     let connexion = establish_connection();
+    clean_db(&connexion).unwrap();
     let client = get_rocket_client();
 
     // when
@@ -69,6 +69,7 @@ fn test_signup() {
 fn test_login_success() {
     // given
     let connexion = establish_connection();
+    clean_db(&connexion).unwrap();
     let client = get_rocket_client();
     let mut response = client
         .post("/graphql")
@@ -104,6 +105,7 @@ fn test_login_success() {
 fn test_login_bad_password() {
     // given
     let connexion = establish_connection();
+    clean_db(&connexion).unwrap();
     let client = get_rocket_client();
     let response = client
         .post("/graphql")

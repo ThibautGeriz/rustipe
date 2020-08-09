@@ -5,7 +5,14 @@ use crate::infrastructure::parser::html::SelectParser;
 use crate::infrastructure::sql::recipes::dao::DieselRecipeDao;
 use crate::infrastructure::sql::users::dao::DieselUserDao;
 use crate::infrastructure::web::jwt::generate_header;
+use crate::infrastructure::web::security::LoggedUser;
+use crate::infrastructure::web::server::DbCon;
+use diesel::pg::PgConnection;
+use diesel::r2d2::{ConnectionManager, PooledConnection};
+use rocket::Outcome;
+
 use juniper::FieldResult;
+use rocket::request::{self, FromRequest, Request};
 use uuid::Uuid;
 
 #[derive(juniper::GraphQLObject)]
@@ -62,37 +69,46 @@ struct NewRecipeGraphQL {
 pub struct Context {
     recipe_interactor: RecipeInteractor,
     user_interactor: UserInteractor,
+    user_id: Option<String>,
+}
+
+impl<'a, 'r> FromRequest<'a, 'r> for Context {
+    type Error = ();
+
+    fn from_request(request: &'a Request<'r>) -> request::Outcome<Context, Self::Error> {
+        let user: LoggedUser = request.guard::<LoggedUser>()?;
+        let db_con: DbCon = request.guard::<DbCon>()?;
+        // TODO: fix this, should be borrowed but lost against compiler lifetime.
+        let db_con2: DbCon = request.guard::<DbCon>()?;
+
+        Outcome::Success(Context::new(
+            db_con.0,
+            db_con2.0,
+            user.0.map(|user_id| user_id.to_hyphenated().to_string()),
+        ))
+    }
 }
 
 impl Context {
-    pub fn new(database_url: String) -> Context {
+    pub fn new(
+        connection: PooledConnection<ConnectionManager<PgConnection>>,
+        connection2: PooledConnection<ConnectionManager<PgConnection>>,
+        user_id: Option<String>,
+    ) -> Context {
         Context {
             recipe_interactor: RecipeInteractor {
-                dao: Box::new(DieselRecipeDao::new(database_url.clone())),
+                dao: Box::new(DieselRecipeDao::new(connection)),
                 parser: Box::new(SelectParser::new()),
             },
             user_interactor: UserInteractor {
-                dao: Box::new(DieselUserDao::new(database_url)),
+                dao: Box::new(DieselUserDao::new(connection2)),
             },
+            user_id,
         }
     }
 }
 
-impl Default for Context {
-    fn default() -> Self {
-        Context {
-            recipe_interactor: RecipeInteractor {
-                dao: Box::new(DieselRecipeDao::default()),
-                parser: Box::new(SelectParser::default()),
-            },
-            user_interactor: UserInteractor {
-                dao: Box::new(DieselUserDao::default()),
-            },
-        }
-    }
-}
-
-impl juniper::Context for Context {}
+impl<'a> juniper::Context for Context {}
 
 pub struct Query;
 
@@ -104,6 +120,7 @@ impl Query {
         "1.0"
     }
     pub fn get_my_recipes(context: &Context, user_id: String) -> FieldResult<Vec<RecipeGraphQL>> {
+        println!("{:?}", &context.user_id);
         let recipes = (&context.recipe_interactor).get_my_recipes(user_id)?;
         Ok(recipes.iter().map(|r| RecipeGraphQL::from(r)).collect())
     }
@@ -121,6 +138,8 @@ pub struct Mutation;
 )]
 impl Mutation {
     fn createRecipe(context: &Context, new_recipe: NewRecipeGraphQL) -> FieldResult<RecipeGraphQL> {
+        println!("TOTO1");
+
         let recipe = (&context.recipe_interactor).add_recipe(Recipe {
             id: Uuid::new_v4(),
             user_id: new_recipe.user_id,
@@ -136,6 +155,8 @@ impl Mutation {
             imported_from: new_recipe.imported_from,
             image_url: new_recipe.image_url,
         })?;
+        println!("TOTO2");
+
         Ok(RecipeGraphQL::from(&recipe))
     }
 

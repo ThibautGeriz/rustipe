@@ -8,6 +8,10 @@ extern crate itertools;
 extern crate juniper;
 extern crate juniper_rocket;
 extern crate ring;
+// #[macro_use]
+extern crate rocket;
+#[macro_use]
+extern crate rocket_contrib;
 extern crate uuid;
 
 pub mod domain;

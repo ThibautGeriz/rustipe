@@ -1,2 +1,6 @@
 [development]
 address = "0.0.0.0"
+
+
+[global.databases]
+master = { url = "postgres://localhost/rustipe", pool_size = 10 }

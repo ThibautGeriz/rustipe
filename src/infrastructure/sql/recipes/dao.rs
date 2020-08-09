@@ -8,12 +8,10 @@ use std::error::Error;
 use uuid::Uuid;
 
 use diesel::pg::PgConnection;
-use diesel::r2d2::{ConnectionManager, Pool};
-use dotenv::dotenv;
-use std::env;
+use diesel::r2d2::{ConnectionManager, PooledConnection};
 
 pub struct DieselRecipeDao {
-    pool: Pool<ConnectionManager<PgConnection>>,
+    connection: PooledConnection<ConnectionManager<PgConnection>>,
 }
 
 impl RecipeDao for DieselRecipeDao {
@@ -23,20 +21,19 @@ impl RecipeDao for DieselRecipeDao {
         use crate::infrastructure::sql::schema::recipes::dsl::{
             recipes, user_id as recipes_user_id,
         };
-        let connexion = self.pool.get()?;
 
         let recipes_results = recipes
             .filter(recipes_user_id.eq(user_id))
-            .load::<Recipe>(&connexion)?;
+            .load::<Recipe>(&self.connection)?;
 
         let instructions_results = Instruction::belonging_to(&recipes_results)
             .order_by(instructions_step_number.asc())
-            .load::<Instruction>(&connexion)?
+            .load::<Instruction>(&self.connection)?
             .grouped_by(&recipes_results);
 
         let ingredients_results = Ingredient::belonging_to(&recipes_results)
             .order_by(ingredient_step_number.asc())
-            .load::<Ingredient>(&connexion)?
+            .load::<Ingredient>(&self.connection)?
             .grouped_by(&recipes_results);
 
         let data = izip!(
@@ -71,20 +68,19 @@ impl RecipeDao for DieselRecipeDao {
         use crate::infrastructure::sql::schema::ingredients::dsl::step_number as ingredient_step_number;
         use crate::infrastructure::sql::schema::instructions::dsl::step_number as instructions_step_number;
         use crate::infrastructure::sql::schema::recipes::dsl::{id as recipe_id, recipes};
-        let connexion = self.pool.get()?;
 
         let recipes_results = recipes
             .filter(recipe_id.eq(id))
-            .load::<Recipe>(&connexion)?;
+            .load::<Recipe>(&self.connection)?;
 
         let instructions_results = Instruction::belonging_to(&recipes_results)
             .order_by(instructions_step_number.asc())
-            .load::<Instruction>(&connexion)?
+            .load::<Instruction>(&self.connection)?
             .grouped_by(&recipes_results);
 
         let ingredients_results = Ingredient::belonging_to(&recipes_results)
             .order_by(ingredient_step_number.asc())
-            .load::<Ingredient>(&connexion)?
+            .load::<Ingredient>(&self.connection)?
             .grouped_by(&recipes_results);
 
         let data = izip!(
@@ -125,19 +121,16 @@ impl RecipeDao for DieselRecipeDao {
         };
         use crate::infrastructure::sql::schema::recipes::dsl::{id as recipe_id, recipes};
 
-        let connexion = self.pool.get()?;
         diesel::delete(ingredients.filter(ingredients_recipe_id.eq(id.clone())))
-            .execute(&connexion)?;
+            .execute(&self.connection)?;
         diesel::delete(instructions.filter(instructions_recipe_id.eq(id.clone())))
-            .execute(&connexion)?;
-        diesel::delete(recipes.filter(recipe_id.eq(id))).execute(&connexion)?;
+            .execute(&self.connection)?;
+        diesel::delete(recipes.filter(recipe_id.eq(id))).execute(&self.connection)?;
         Ok(())
     }
 
     fn add_recipe(&self, new_recipe: DomainNewRecipe) -> Result<DomainRecipe, Box<dyn Error>> {
         use crate::infrastructure::sql::schema::{ingredients, instructions, recipes};
-        let connexion = self.pool.get()?;
-
         let new_recipe_sql = NewRecipe {
             id: new_recipe.id,
             title: new_recipe.title,
@@ -152,9 +145,12 @@ impl RecipeDao for DieselRecipeDao {
             imported_from: new_recipe.imported_from,
         };
 
-        let inserted_recipe: Recipe = diesel::insert_into(recipes::table)
-            .values(&new_recipe_sql)
-            .get_result(&connexion)?;
+        let inserted_recipe: Result<Recipe, diesel::result::Error> =
+            diesel::insert_into(recipes::table)
+                .values(&new_recipe_sql)
+                .get_result(&self.connection);
+
+        let inserted_recipe = inserted_recipe?;
 
         let new_instructions: Vec<NewInstruction> = new_recipe
             .instructions
@@ -169,7 +165,7 @@ impl RecipeDao for DieselRecipeDao {
 
         let inserted_instructions: Vec<Instruction> = diesel::insert_into(instructions::table)
             .values(&new_instructions)
-            .get_results(&connexion)?;
+            .get_results(&self.connection)?;
 
         let new_ingredients: Vec<NewIngredient> = new_recipe
             .ingredients
@@ -184,7 +180,7 @@ impl RecipeDao for DieselRecipeDao {
 
         let inserted_ingredients: Vec<Ingredient> = diesel::insert_into(ingredients::table)
             .values(&new_ingredients)
-            .get_results(&connexion)?;
+            .get_results(&self.connection)?;
 
         Ok(DomainRecipe::from(
             &inserted_recipe,
@@ -195,24 +191,9 @@ impl RecipeDao for DieselRecipeDao {
 }
 
 impl DieselRecipeDao {
-    pub fn new(database_url: String) -> DieselRecipeDao {
-        DieselRecipeDao {
-            pool: create_pool(database_url),
-        }
+    pub fn new(connection: PooledConnection<ConnectionManager<PgConnection>>) -> DieselRecipeDao {
+        DieselRecipeDao { connection }
     }
-}
-
-impl Default for DieselRecipeDao {
-    fn default() -> Self {
-        dotenv().ok();
-        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-        DieselRecipeDao::new(database_url)
-    }
-}
-
-fn create_pool(database_url: String) -> Pool<ConnectionManager<PgConnection>> {
-    let manager = ConnectionManager::new(database_url);
-    Pool::builder().max_size(10).build(manager).unwrap()
 }
 
 impl DomainRecipe {

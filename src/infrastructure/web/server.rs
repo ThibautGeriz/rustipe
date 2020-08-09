@@ -4,19 +4,22 @@ use rocket_cors::{AllowedHeaders, AllowedOrigins, Cors, CorsOptions};
 
 use crate::infrastructure::web::graphql_schema::{Context, Mutation, Query, Schema};
 
-pub fn get_server(database_url: String) -> Rocket {
+#[database("master")]
+pub struct DbCon(diesel::PgConnection);
+
+pub fn get_server() -> Rocket {
     rocket::ignite()
-        .manage(Context::new(database_url))
         .manage(Schema::new(Query, Mutation))
         .mount(
             "/",
             rocket::routes![graphiql, get_graphql_handler, post_graphql_handler],
         )
         .attach(make_cors())
+        .attach(DbCon::fairing())
 }
 
-pub fn start_server(database_url: String) {
-    get_server(database_url).launch();
+pub fn start_server() {
+    get_server().launch();
 }
 
 #[rocket::get("/")]
@@ -26,7 +29,7 @@ fn graphiql() -> content::Html<String> {
 
 #[rocket::get("/graphql?<request>")]
 fn get_graphql_handler(
-    context: State<Context>,
+    context: Context,
     request: juniper_rocket::GraphQLRequest,
     schema: State<Schema>,
 ) -> juniper_rocket::GraphQLResponse {
@@ -35,7 +38,7 @@ fn get_graphql_handler(
 
 #[rocket::post("/graphql", data = "<request>")]
 fn post_graphql_handler(
-    context: State<Context>,
+    context: Context,
     request: juniper_rocket::GraphQLRequest,
     schema: State<Schema>,
 ) -> juniper_rocket::GraphQLResponse {

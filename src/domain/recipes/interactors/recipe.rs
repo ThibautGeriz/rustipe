@@ -6,7 +6,7 @@ use std::marker::Send;
 use std::marker::Sync;
 
 pub struct RecipeInteractor {
-    pub dao: Box<dyn RecipeDao + Send + Sync>,
+    pub dao: Box<dyn RecipeDao>,
     pub parser: Box<dyn Parser + Send + Sync>,
 }
 

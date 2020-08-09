@@ -16,18 +16,22 @@ use std::env;
 
 fn get_database_url() -> String {
     String::from(
-        env::var("TEST_DATABASE_URL")
+        env::var("DATABASE_URL")
             .or_else(|_e| {
                 dotenv().ok();
-                env::var("TEST_DATABASE_URL")
+                env::var("DATABASE_URL")
             })
-            .expect("TEST_DATABASE_URL must be set"),
+            .expect("DATABASE_URL must be set"),
     )
 }
+
 fn get_rocket_client() -> Client {
-    let url = get_database_url();
     env::set_var("JWT_SECRET", "SECRET");
-    Client::new(server::get_server(url)).expect("valid rocket instance")
+    env::set_var(
+        "ROCKET_DATABASE_master",
+        "{ url = \"postgres://localhost/rustipe-test\", pool_size = 1 }",
+    );
+    Client::new(server::get_server()).expect("valid rocket instance")
 }
 
 pub fn establish_connection() -> PgConnection {
@@ -73,6 +77,7 @@ fn init_with_users(connexion: &PgConnection) -> Result<(), Box<dyn Error>> {
 fn test_get_recipes_without_recipes() {
     // given
     let connexion = establish_connection();
+    clean_db(&connexion).unwrap();
     init_with_users(&connexion).unwrap();
     let client = get_rocket_client();
 
@@ -98,6 +103,7 @@ fn test_get_recipes_without_recipes() {
 fn test_add_recipe() {
     // given
     let connexion = establish_connection();
+    clean_db(&connexion).unwrap();
     init_with_users(&connexion).unwrap();
     let client = get_rocket_client();
 
@@ -121,6 +127,7 @@ fn test_add_recipe() {
 fn test_get_recipes_with_2_recipes() {
     // given
     let connexion = establish_connection();
+    clean_db(&connexion).unwrap();
     init_with_users(&connexion).unwrap();
     let client = get_rocket_client();
     let response_recipe_1 = client
@@ -154,6 +161,7 @@ fn test_get_recipes_with_2_recipes() {
 fn test_get_single_recipe() {
     // given
     let connexion = establish_connection();
+    clean_db(&connexion).unwrap();
     init_with_users(&connexion).unwrap();
     let client = get_rocket_client();
     let mut response_recipe_1 = client

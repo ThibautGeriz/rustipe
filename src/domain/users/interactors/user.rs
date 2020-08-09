@@ -2,8 +2,6 @@ use crate::domain::users::models::user::User;
 use crate::domain::users::ports::dao::UserDao;
 use ring::{digest, pbkdf2};
 use std::error::Error;
-use std::marker::Send;
-use std::marker::Sync;
 use std::num::NonZeroU32;
 use uuid::Uuid;
 
@@ -13,7 +11,7 @@ const HASH_LEN: usize = digest::SHA256_OUTPUT_LEN;
 type PasswordHash = [u8; HASH_LEN];
 
 pub struct UserInteractor {
-    pub dao: Box<dyn UserDao + Send + Sync>,
+    pub dao: Box<dyn UserDao>,
 }
 
 impl UserInteractor {

@@ -24,6 +24,11 @@ ring = "0.16.15"
 jsonwebtoken = "7"
 serde = {version = "1.0", features = ["derive"] }
 
+[dependencies.rocket_contrib]
+version = "0.4"
+default-features = false
+features = ["diesel_postgres_pool"]
+
 [dev-dependencies.cargo-husky]
 version = "1"
 default-features = false # Disable features which are enabled by default

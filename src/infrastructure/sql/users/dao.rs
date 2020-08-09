@@ -8,12 +8,10 @@ use std::error::Error;
 use uuid::Uuid;
 
 use diesel::pg::PgConnection;
-use diesel::r2d2::{ConnectionManager, Pool};
-use dotenv::dotenv;
-use std::env;
+use diesel::r2d2::{ConnectionManager, PooledConnection};
 
 pub struct DieselUserDao {
-    pool: Pool<ConnectionManager<PgConnection>>,
+    connection: PooledConnection<ConnectionManager<PgConnection>>,
 }
 
 impl UserDao for DieselUserDao {
@@ -24,7 +22,6 @@ impl UserDao for DieselUserDao {
         password_hash: String,
     ) -> Result<DomainUser, Box<dyn Error>> {
         use crate::infrastructure::sql::schema::users;
-        let connexion = self.pool.get()?;
 
         let new_user_sql = NewUser {
             id: &id,
@@ -34,7 +31,7 @@ impl UserDao for DieselUserDao {
 
         let inserted_user: User = diesel::insert_into(users::table)
             .values(&new_user_sql)
-            .get_result(&connexion)?;
+            .get_result(&self.connection)?;
 
         Ok(DomainUser {
             id: Uuid::parse_str(inserted_user.id.as_str()).expect("Cannot parse UUID"),
@@ -45,12 +42,11 @@ impl UserDao for DieselUserDao {
         use crate::infrastructure::sql::schema::users::dsl::{
             email as db_email, password_hash as db_password_hash, users,
         };
-        let connexion = self.pool.get()?;
 
         let users_results = users
             .filter(db_email.eq(email))
             .filter(db_password_hash.eq(password_hash))
-            .load::<User>(&connexion)?;
+            .load::<User>(&self.connection)?;
 
         println!("{:?}", &users_results);
         let user: &User = users_results.first().ok_or(UserError::BadCredentials)?;
@@ -62,22 +58,7 @@ impl UserDao for DieselUserDao {
 }
 
 impl DieselUserDao {
-    pub fn new(database_url: String) -> DieselUserDao {
-        DieselUserDao {
-            pool: create_pool(database_url),
-        }
+    pub fn new(connection: PooledConnection<ConnectionManager<PgConnection>>) -> DieselUserDao {
+        DieselUserDao { connection }
     }
-}
-
-impl Default for DieselUserDao {
-    fn default() -> Self {
-        dotenv().ok();
-        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-        DieselUserDao::new(database_url)
-    }
-}
-
-fn create_pool(database_url: String) -> Pool<ConnectionManager<PgConnection>> {
-    let manager = ConnectionManager::new(database_url);
-    Pool::builder().max_size(10).build(manager).unwrap()
 }
