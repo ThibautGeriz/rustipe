@@ -1,3 +1,4 @@
+use crate::domain::recipes::errors::RecipeError;
 use crate::domain::recipes::models::recipe::Recipe;
 use crate::domain::recipes::ports::dao::{NewRecipe, RecipeDao};
 use crate::domain::recipes::ports::parser::Parser;
@@ -48,7 +49,11 @@ impl RecipeInteractor {
         })
     }
 
-    pub fn delete_recipe(&self, id: String) -> Result<(), Box<dyn Error>> {
+    pub fn delete_recipe(&self, id: String, user_id: String) -> Result<(), Box<dyn Error>> {
+        let recipe = self.dao.get_recipe(id.clone())?;
+        if recipe.user_id != user_id {
+            return Err(Box::new(RecipeError::RecipeNotDeletable));
+        }
         self.dao.delete_recipe(id)
     }
 

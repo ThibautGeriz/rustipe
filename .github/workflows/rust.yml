@@ -58,7 +58,7 @@ jobs:
                   args: -- --test-threads=1
               env:
                   DATABASE_URL: postgresql://test_user:test_password@localhost:5432/rustipe
-
+                  ROCKET_DATABASES: '{master={url="postgresql://test_user:test_password@localhost:5432/rustipe"}}'
     fmt:
         name: Rustfmt
         runs-on: ubuntu-latest

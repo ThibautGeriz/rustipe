@@ -1,5 +1,6 @@
 use crate::domain::recipes::interactors::recipe::RecipeInteractor;
 use crate::domain::recipes::models::recipe::Recipe;
+use crate::domain::users::errors::UserError;
 use crate::domain::users::interactors::user::UserInteractor;
 use crate::infrastructure::parser::html::SelectParser;
 use crate::infrastructure::sql::recipes::dao::DieselRecipeDao;
@@ -20,6 +21,7 @@ use uuid::Uuid;
 struct RecipeGraphQL {
     id: String,
     title: String,
+    user_id: String,
     description: Option<String>,
     image_url: Option<String>,
     recipe_yield: Option<String>,
@@ -36,6 +38,7 @@ impl RecipeGraphQL {
         RecipeGraphQL {
             id: recipe.id.to_hyphenated().to_string(),
             title: recipe.title.clone(),
+            user_id: recipe.user_id.clone(),
             description: recipe.description.clone(),
             image_url: recipe.image_url.clone(),
             recipe_yield: recipe.recipe_yield.clone(),
@@ -53,7 +56,6 @@ impl RecipeGraphQL {
 #[graphql(description = "A Recipe for a delicious dish")]
 struct NewRecipeGraphQL {
     title: String,
-    user_id: String,
     pub description: Option<String>,
     pub cook_time_in_minute: Option<i32>,
     pub prep_time_in_minute: Option<i32>,
@@ -106,6 +108,13 @@ impl Context {
             user_id,
         }
     }
+
+    pub fn get_user(&self) -> FieldResult<String> {
+        if self.user_id.is_none() {
+            return Err(juniper::FieldError::from(UserError::MustBeLogged));
+        }
+        Ok(self.user_id.clone().unwrap())
+    }
 }
 
 impl<'a> juniper::Context for Context {}
@@ -119,8 +128,8 @@ impl Query {
     pub fn apiVersion() -> &str {
         "1.0"
     }
-    pub fn get_my_recipes(context: &Context, user_id: String) -> FieldResult<Vec<RecipeGraphQL>> {
-        println!("{:?}", &context.user_id);
+    pub fn get_my_recipes(context: &Context) -> FieldResult<Vec<RecipeGraphQL>> {
+        let user_id = context.get_user()?;
         let recipes = (&context.recipe_interactor).get_my_recipes(user_id)?;
         Ok(recipes.iter().map(|r| RecipeGraphQL::from(r)).collect())
     }
@@ -138,11 +147,10 @@ pub struct Mutation;
 )]
 impl Mutation {
     fn createRecipe(context: &Context, new_recipe: NewRecipeGraphQL) -> FieldResult<RecipeGraphQL> {
-        println!("TOTO1");
-
+        let user_id = context.get_user()?;
         let recipe = (&context.recipe_interactor).add_recipe(Recipe {
             id: Uuid::new_v4(),
-            user_id: new_recipe.user_id,
+            user_id,
             title: new_recipe.title,
             description: new_recipe.description,
             recipe_yield: new_recipe.recipe_yield,
@@ -155,17 +163,18 @@ impl Mutation {
             imported_from: new_recipe.imported_from,
             image_url: new_recipe.image_url,
         })?;
-        println!("TOTO2");
 
         Ok(RecipeGraphQL::from(&recipe))
     }
 
     fn deleteRecipe(context: &Context, id: String) -> FieldResult<String> {
-        (&context.recipe_interactor).delete_recipe(id.clone())?;
+        let user_id = context.get_user()?;
+        (&context.recipe_interactor).delete_recipe(id.clone(), user_id)?;
         Ok(id)
     }
 
-    fn importRecipe(context: &Context, url: String, user_id: String) -> FieldResult<RecipeGraphQL> {
+    fn importRecipe(context: &Context, url: String) -> FieldResult<RecipeGraphQL> {
+        let user_id = context.get_user()?;
         let recipe = (&context.recipe_interactor).import_from(url, user_id)?;
         Ok(RecipeGraphQL::from(&recipe))
     }
