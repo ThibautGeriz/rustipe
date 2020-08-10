@@ -27,6 +27,8 @@ table! {
         category -> Nullable<Varchar>,
         cuisine -> Nullable<Varchar>,
         imported_from -> Nullable<Varchar>,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
     }
 }
 
@@ -35,6 +37,8 @@ table! {
         id -> Varchar,
         email -> Varchar,
         password_hash -> Varchar,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
     }
 }
 

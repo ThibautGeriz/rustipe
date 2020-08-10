@@ -1,4 +1,5 @@
 use crate::infrastructure::sql::schema::{ingredients, instructions, recipes, users};
+use std::time::SystemTime;
 
 #[derive(Identifiable, Queryable, PartialEq, Debug)]
 #[table_name = "users"]
@@ -6,6 +7,8 @@ pub struct User {
     pub id: String,
     pub email: String,
     pub password_hash: String,
+    pub created_at: SystemTime,
+    pub updated_at: SystemTime,
 }
 
 #[derive(Insertable)]
@@ -31,6 +34,8 @@ pub struct Recipe {
     pub category: Option<String>,
     pub cuisine: Option<String>,
     pub imported_from: Option<String>,
+    pub created_at: SystemTime,
+    pub updated_at: SystemTime,
 }
 
 #[derive(Insertable)]
