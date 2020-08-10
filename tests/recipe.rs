@@ -1,7 +1,10 @@
 extern crate recipes_backend;
 extern crate serde_json;
 
+use self::recipes_backend::domain::users::models::user::User;
+use self::recipes_backend::infrastructure::web::jwt::generate_header;
 use self::recipes_backend::infrastructure::web::server;
+use rocket::http::Header;
 
 use diesel::pg::PgConnection;
 use diesel::Connection;
@@ -10,23 +13,29 @@ use rocket::http::{ContentType, Status};
 use rocket::local::Client;
 use serde_json::Value;
 use std::error::Error;
+use uuid::Uuid;
 
 use dotenv::dotenv;
 use std::env;
 
 fn get_database_url() -> String {
     String::from(
-        env::var("TEST_DATABASE_URL")
+        env::var("DATABASE_URL")
             .or_else(|_e| {
                 dotenv().ok();
-                env::var("TEST_DATABASE_URL")
+                env::var("DATABASE_URL")
             })
-            .expect("TEST_DATABASE_URL must be set"),
+            .expect("DATABASE_URL must be set"),
     )
 }
+
 fn get_rocket_client() -> Client {
-    let url = get_database_url();
-    Client::new(server::get_server(url)).expect("valid rocket instance")
+    env::set_var("JWT_SECRET", "SECRET");
+    env::set_var(
+        "ROCKET_DATABASE_master",
+        "{ url = \"postgres://localhost/rustipe-test\", pool_size = 1 }",
+    );
+    Client::new(server::get_server()).expect("valid rocket instance")
 }
 
 pub fn establish_connection() -> PgConnection {
@@ -52,15 +61,16 @@ fn init_with_users(connexion: &PgConnection) -> Result<(), Box<dyn Error>> {
     use self::recipes_backend::infrastructure::sql::schema::users;
 
     let new_user_1 = NewUser {
-        id: "user_id_1",
+        id: "2f0194af-66e6-43f5-8e1a-2e836c9e44a8",
         email: "email1",
         password_hash: "password",
     };
     let new_user_2 = NewUser {
-        id: "user_id_2",
+        id: "2f0194af-66e6-43f5-8e1a-2e836c9e44a7",
         email: "email2",
         password_hash: "password",
     };
+
     diesel::insert_into(users::table)
         .values(&vec![new_user_1, new_user_2])
         .get_result::<User>(connexion)
@@ -68,10 +78,23 @@ fn init_with_users(connexion: &PgConnection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+fn get_auth<'a>() -> Header<'a> {
+    let u = User {
+        id: Uuid::parse_str("2f0194af-66e6-43f5-8e1a-2e836c9e44a8").expect("Cannot parse UUID"),
+        email: String::from("email1"),
+    };
+    let token = generate_header(u).unwrap();
+
+    let mut value = String::from("Bearer ");
+    value.push_str(&token);
+    Header::new("Authorization", value)
+}
+
 #[test]
 fn test_get_recipes_without_recipes() {
     // given
     let connexion = establish_connection();
+    clean_db(&connexion).unwrap();
     init_with_users(&connexion).unwrap();
     let client = get_rocket_client();
 
@@ -79,7 +102,8 @@ fn test_get_recipes_without_recipes() {
     let mut response = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .body(r#"{"query":"{\n  getMyRecipes(userId: \"user_id_1\") {\n    title\n    instructions\n    ingredients\n  }\n}\n"}"#)
+        .header(get_auth())
+        .body(r#"{"query":"{\n  getMyRecipes {\n    title\n    instructions\n    ingredients\n  }\n}\n"}"#)
         .dispatch();
 
     // then
@@ -97,6 +121,7 @@ fn test_get_recipes_without_recipes() {
 fn test_add_recipe() {
     // given
     let connexion = establish_connection();
+    clean_db(&connexion).unwrap();
     init_with_users(&connexion).unwrap();
     let client = get_rocket_client();
 
@@ -104,7 +129,8 @@ fn test_add_recipe() {
     let mut response = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe\", userId: \"user_id_1\", instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
+        .header(get_auth())
+        .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe\", instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  userId\n  }\n}\n"}"#)
         .dispatch();
 
     // then
@@ -113,6 +139,10 @@ fn test_add_recipe() {
 
     let body: Value = serde_json::from_str(&response.body_string().unwrap()).unwrap();
     assert_eq!(body["data"]["createRecipe"]["title"], "my recipe");
+    assert_eq!(
+        body["data"]["createRecipe"]["userId"],
+        "2f0194af-66e6-43f5-8e1a-2e836c9e44a8"
+    );
     clean_db(&connexion).unwrap();
 }
 
@@ -120,18 +150,21 @@ fn test_add_recipe() {
 fn test_get_recipes_with_2_recipes() {
     // given
     let connexion = establish_connection();
+    clean_db(&connexion).unwrap();
     init_with_users(&connexion).unwrap();
     let client = get_rocket_client();
     let response_recipe_1 = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe\", userId: \"user_id_1\", instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
+        .header(get_auth())
+        .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe\", instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
         .dispatch();
     assert_eq!(response_recipe_1.status(), Status::Ok);
     let response_recipe_2 = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe 2\", userId: \"user_id_1\", instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
+        .header(get_auth())
+        .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe 2\", instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
         .dispatch();
     assert_eq!(response_recipe_2.status(), Status::Ok);
 
@@ -139,7 +172,8 @@ fn test_get_recipes_with_2_recipes() {
     let response = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .body(r#"{"query":"{\n  getMyRecipes(userId: \"user_id_1\") {\n    title\n    instructions\n    ingredients\n  }\n}\n"}"#)
+        .header(get_auth())
+        .body(r#"{"query":"{\n  getMyRecipes {\n    title\n    instructions\n    ingredients\n  }\n}\n"}"#)
         .dispatch();
 
     // then
@@ -153,12 +187,14 @@ fn test_get_recipes_with_2_recipes() {
 fn test_get_single_recipe() {
     // given
     let connexion = establish_connection();
+    clean_db(&connexion).unwrap();
     init_with_users(&connexion).unwrap();
     let client = get_rocket_client();
     let mut response_recipe_1 = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe\", userId: \"user_id_2\", instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
+        .header(get_auth())
+        .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe\",  instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
         .dispatch();
     assert_eq!(response_recipe_1.status(), Status::Ok);
     let body: Value = serde_json::from_str(&response_recipe_1.body_string().unwrap()).unwrap();

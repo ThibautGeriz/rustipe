@@ -1,3 +1,4 @@
+use crate::domain::recipes::errors::RecipeError;
 use crate::domain::recipes::models::recipe::Recipe;
 use crate::domain::recipes::ports::dao::{NewRecipe, RecipeDao};
 use crate::domain::recipes::ports::parser::Parser;
@@ -6,7 +7,7 @@ use std::marker::Send;
 use std::marker::Sync;
 
 pub struct RecipeInteractor {
-    pub dao: Box<dyn RecipeDao + Send + Sync>,
+    pub dao: Box<dyn RecipeDao>,
     pub parser: Box<dyn Parser + Send + Sync>,
 }
 
@@ -48,7 +49,11 @@ impl RecipeInteractor {
         })
     }
 
-    pub fn delete_recipe(&self, id: String) -> Result<(), Box<dyn Error>> {
+    pub fn delete_recipe(&self, id: String, user_id: String) -> Result<(), Box<dyn Error>> {
+        let recipe = self.dao.get_recipe(id.clone())?;
+        if recipe.user_id != user_id {
+            return Err(Box::new(RecipeError::RecipeNotDeletable));
+        }
         self.dao.delete_recipe(id)
     }
 

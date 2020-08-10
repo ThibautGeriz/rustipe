@@ -20,6 +20,14 @@ select = "0.5.0"
 reqwest = { version = "0.10", features = ["blocking", "json"] }
 thiserror = "1.0.20"
 iso8601-duration = "0.1.0"
+ring = "0.16.15"
+jsonwebtoken = "7"
+serde = {version = "1.0", features = ["derive"] }
+
+[dependencies.rocket_contrib]
+version = "0.4"
+default-features = false
+features = ["diesel_postgres_pool"]
 
 [dev-dependencies.cargo-husky]
 version = "1"
