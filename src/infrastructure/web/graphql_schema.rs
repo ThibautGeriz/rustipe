@@ -31,6 +31,7 @@ struct RecipeGraphQL {
     prep_time_in_minute: Option<i32>,
     instructions: Vec<String>,
     ingredients: Vec<String>,
+    imported_from: Option<String>,
 }
 
 impl RecipeGraphQL {
@@ -48,6 +49,7 @@ impl RecipeGraphQL {
             prep_time_in_minute: recipe.prep_time_in_minute,
             instructions: recipe.instructions.clone(),
             ingredients: recipe.ingredients.clone(),
+            imported_from: recipe.imported_from.clone(),
         }
     }
 }
