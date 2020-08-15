@@ -19,7 +19,7 @@ pub struct NewUser<'a> {
     pub password_hash: &'a str,
 }
 
-#[derive(Identifiable, Queryable, Associations, PartialEq, Debug)]
+#[derive(Identifiable, Queryable, Associations, AsChangeset, PartialEq, Debug)]
 #[table_name = "recipes"]
 #[belongs_to(User)]
 pub struct Recipe {

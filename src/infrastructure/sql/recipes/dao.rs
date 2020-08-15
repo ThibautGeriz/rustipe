@@ -129,8 +129,62 @@ impl RecipeDao for DieselRecipeDao {
         Ok(())
     }
 
+    fn update_recipe(&self, recipe: DomainRecipe) -> Result<DomainRecipe, Box<dyn Error>> {
+        use crate::infrastructure::sql::schema::ingredients::dsl::{
+            ingredients, recipe_id as ingredients_recipe_id,
+        };
+        use crate::infrastructure::sql::schema::instructions::dsl::{
+            instructions, recipe_id as instructions_recipe_id,
+        };
+        use crate::infrastructure::sql::schema::recipes::dsl::{
+            category, cook_time_in_minute, cuisine, description, id as recipe_id, image_url,
+            imported_from, prep_time_in_minute, recipe_yield, recipes, title,
+        };
+        let id: String = recipe.id.to_hyphenated().to_string();
+        let inserted_recipe = diesel::update(recipes.filter(recipe_id.eq(&id)))
+            .set((
+                title.eq(recipe.title),
+                description.eq(recipe.description),
+                cook_time_in_minute.eq(recipe.cook_time_in_minute),
+                prep_time_in_minute.eq(recipe.prep_time_in_minute),
+                image_url.eq(recipe.image_url),
+                recipe_yield.eq(recipe.recipe_yield),
+                category.eq(recipe.category),
+                cuisine.eq(recipe.cuisine),
+                imported_from.eq(recipe.imported_from),
+            ))
+            .get_result(&self.connection)?;
+
+        diesel::delete(ingredients.filter(ingredients_recipe_id.eq(&id)))
+            .execute(&self.connection)?;
+        diesel::delete(instructions.filter(instructions_recipe_id.eq(&id)))
+            .execute(&self.connection)?;
+
+        let inserted_instructions = self.insert_instructions(
+            recipe.id.to_hyphenated().to_string().as_str(),
+            &recipe
+                .instructions
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<&str>>(),
+        )?;
+
+        let inserted_ingredients = self.insert_ingredients(
+            recipe.id.to_hyphenated().to_string().as_str(),
+            &recipe
+                .ingredients
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<&str>>(),
+        )?;
+        Ok(DomainRecipe::from(
+            &inserted_recipe,
+            inserted_instructions,
+            inserted_ingredients,
+        ))
+    }
     fn add_recipe(&self, new_recipe: DomainNewRecipe) -> Result<DomainRecipe, Box<dyn Error>> {
-        use crate::infrastructure::sql::schema::{ingredients, instructions, recipes};
+        use crate::infrastructure::sql::schema::recipes;
         let new_recipe_sql = NewRecipe {
             id: new_recipe.id,
             title: new_recipe.title,
@@ -152,35 +206,11 @@ impl RecipeDao for DieselRecipeDao {
 
         let inserted_recipe = inserted_recipe?;
 
-        let new_instructions: Vec<NewInstruction> = new_recipe
-            .instructions
-            .iter()
-            .enumerate()
-            .map(|(i, instuction)| NewInstruction {
-                recipe_id: new_recipe.id,
-                step_number: i as i32 + 1,
-                instruction: instuction,
-            })
-            .collect();
+        let inserted_instructions =
+            self.insert_instructions(&new_recipe.id, &new_recipe.instructions)?;
 
-        let inserted_instructions: Vec<Instruction> = diesel::insert_into(instructions::table)
-            .values(&new_instructions)
-            .get_results(&self.connection)?;
-
-        let new_ingredients: Vec<NewIngredient> = new_recipe
-            .ingredients
-            .iter()
-            .enumerate()
-            .map(|(i, ingredient)| NewIngredient {
-                recipe_id: new_recipe.id,
-                step_number: i as i32 + 1,
-                ingredient,
-            })
-            .collect();
-
-        let inserted_ingredients: Vec<Ingredient> = diesel::insert_into(ingredients::table)
-            .values(&new_ingredients)
-            .get_results(&self.connection)?;
+        let inserted_ingredients =
+            self.insert_ingredients(&new_recipe.id, &new_recipe.ingredients)?;
 
         Ok(DomainRecipe::from(
             &inserted_recipe,
@@ -193,6 +223,51 @@ impl RecipeDao for DieselRecipeDao {
 impl DieselRecipeDao {
     pub fn new(connection: PooledConnection<ConnectionManager<PgConnection>>) -> DieselRecipeDao {
         DieselRecipeDao { connection }
+    }
+
+    fn insert_instructions<'a>(
+        &self,
+        recipe_id: &'a str,
+        instructions_to_insert: &[&'a str],
+    ) -> Result<Vec<Instruction>, Box<dyn Error>> {
+        use crate::infrastructure::sql::schema::instructions;
+
+        let new_instructions: Vec<NewInstruction> = instructions_to_insert
+            .iter()
+            .enumerate()
+            .map(|(i, instuction)| NewInstruction {
+                recipe_id,
+                step_number: i as i32 + 1,
+                instruction: instuction,
+            })
+            .collect();
+
+        let inserted_instructions: Vec<Instruction> = diesel::insert_into(instructions::table)
+            .values(&new_instructions)
+            .get_results(&self.connection)?;
+        Ok(inserted_instructions)
+    }
+
+    fn insert_ingredients<'a>(
+        &self,
+        recipe_id: &'a str,
+        ingredients_to_insert: &[&'a str],
+    ) -> Result<Vec<Ingredient>, Box<dyn Error>> {
+        use crate::infrastructure::sql::schema::ingredients;
+        let new_ingredients: Vec<NewIngredient> = ingredients_to_insert
+            .iter()
+            .enumerate()
+            .map(|(i, ingredient)| NewIngredient {
+                recipe_id,
+                step_number: i as i32 + 1,
+                ingredient,
+            })
+            .collect();
+
+        let inserted_ingredients: Vec<Ingredient> = diesel::insert_into(ingredients::table)
+            .values(&new_ingredients)
+            .get_results(&self.connection)?;
+        Ok(inserted_ingredients)
     }
 }
 

@@ -49,10 +49,20 @@ impl RecipeInteractor {
         })
     }
 
+    pub fn update_recipe(&self, new_recipe: Recipe) -> Result<Recipe, Box<dyn Error>> {
+        let recipe = self
+            .dao
+            .get_recipe(new_recipe.id.to_hyphenated().to_string())?;
+        if recipe.user_id != new_recipe.user_id {
+            return Err(Box::new(RecipeError::RecipeDoNotbelongToUser));
+        }
+        self.dao.update_recipe(new_recipe)
+    }
+
     pub fn delete_recipe(&self, id: String, user_id: String) -> Result<(), Box<dyn Error>> {
         let recipe = self.dao.get_recipe(id.clone())?;
         if recipe.user_id != user_id {
-            return Err(Box::new(RecipeError::RecipeNotDeletable));
+            return Err(Box::new(RecipeError::RecipeDoNotbelongToUser));
         }
         self.dao.delete_recipe(id)
     }
