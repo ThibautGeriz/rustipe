@@ -2,8 +2,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum RecipeError {
-    #[error("Recipe is not yours to delete")]
-    RecipeNotDeletable,
+    #[error("Recipe is not yours")]
+    RecipeDoNotbelongToUser,
     #[error("Website not supported")]
     RecipeImportedWebsiteNotSupported,
     #[error("Recipe not imported")]

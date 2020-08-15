@@ -223,3 +223,45 @@ fn test_get_single_recipe() {
 
     clean_db(&connexion).unwrap();
 }
+
+#[test]
+fn test_update_recipe() {
+    // given
+    let connexion = establish_connection();
+    clean_db(&connexion).unwrap();
+    init_with_users(&connexion).unwrap();
+    let client = get_rocket_client();
+    let mut response_recipe_1 = client
+        .post("/graphql")
+        .header(ContentType::JSON)
+        .header(get_auth())
+        .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe\",  instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
+        .dispatch();
+    assert_eq!(response_recipe_1.status(), Status::Ok);
+    let body: Value = serde_json::from_str(&response_recipe_1.body_string().unwrap()).unwrap();
+    let id: &str = &body["data"]["createRecipe"]["id"].as_str().unwrap();
+
+    // when
+    let mut response = client
+        .post("/graphql")
+        .header(ContentType::JSON)
+        .header(get_auth())
+        .body(format!(
+            r#"{{"query":"mutation {{\n  updateRecipe(id:\"{id}\", newRecipe: {{ title: \"my recipe2\", description:\"my desc\" instructions: [\"ins3\", \"ins4\"], ingredients: [\"ing1\", \"ing2\"]}}) {{\n    id\n   title ingredients\n    description\n    instructions\n  }}\n}}\n"}}"#,
+            id = id
+        ))
+        .dispatch();
+
+    // then
+    assert_eq!(response.status(), Status::Ok);
+    assert_eq!(response.content_type(), Some(ContentType::JSON));
+    assert_eq!(
+        response.body_string(),
+        Some(String::from(format!(
+            "{{\"data\":{{\"updateRecipe\":{{\"id\":\"{id}\",\"title\":\"my recipe2\",\"ingredients\":[\"ing1\",\"ing2\"],\"description\":\"my desc\",\"instructions\":[\"ins3\",\"ins4\"]}}}}}}",
+            id = id
+        )))
+    );
+
+    clean_db(&connexion).unwrap();
+}

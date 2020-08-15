@@ -23,4 +23,5 @@ pub trait RecipeDao {
     fn get_recipe(&self, id: String) -> Result<Recipe, Box<dyn Error>>;
     fn delete_recipe(&self, id: String) -> Result<(), Box<dyn Error>>;
     fn add_recipe(&self, new_recipe: NewRecipe) -> Result<Recipe, Box<dyn Error>>;
+    fn update_recipe(&self, new_recipe: Recipe) -> Result<Recipe, Box<dyn Error>>;
 }

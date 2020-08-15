@@ -169,6 +169,31 @@ impl Mutation {
         Ok(RecipeGraphQL::from(&recipe))
     }
 
+    fn updateRecipe(
+        context: &Context,
+        id: String,
+        new_recipe: NewRecipeGraphQL,
+    ) -> FieldResult<RecipeGraphQL> {
+        let user_id = context.get_user()?;
+        let recipe = (&context.recipe_interactor).update_recipe(Recipe {
+            id: Uuid::parse_str(id.as_str()).expect("Cannot parse UUID"),
+            user_id,
+            title: new_recipe.title,
+            description: new_recipe.description,
+            recipe_yield: new_recipe.recipe_yield,
+            category: new_recipe.category,
+            cuisine: new_recipe.cuisine,
+            prep_time_in_minute: new_recipe.prep_time_in_minute,
+            cook_time_in_minute: new_recipe.cook_time_in_minute,
+            instructions: new_recipe.instructions,
+            ingredients: new_recipe.ingredients,
+            imported_from: new_recipe.imported_from,
+            image_url: new_recipe.image_url,
+        })?;
+
+        Ok(RecipeGraphQL::from(&recipe))
+    }
+
     fn deleteRecipe(context: &Context, id: String) -> FieldResult<String> {
         let user_id = context.get_user()?;
         (&context.recipe_interactor).delete_recipe(id.clone(), user_id)?;
