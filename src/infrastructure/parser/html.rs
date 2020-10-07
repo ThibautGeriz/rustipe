@@ -1,9 +1,10 @@
+use crate::domain::recipes::errors::RecipeError;
 use crate::domain::recipes::models::recipe::Recipe;
 use crate::domain::recipes::ports::parser::Parser;
 
-use crate::domain::recipes::errors::RecipeError;
 use iso8601_duration::Duration;
 use select::document::Document;
+use select::node::Data;
 use select::predicate::{Attr, Name, Predicate};
 use serde_json::Value;
 use std::error::Error;
@@ -58,11 +59,8 @@ impl SelectParser {
             .iter()
             .map(|i| {
                 let text = if i.is_object() { &i["text"] } else { i };
-                String::from(
-                    text.as_str()
-                        .expect("Impossible to retrieve instructions")
-                        .trim(),
-                )
+                self.get_string_field(text)
+                    .expect("Impossible to retrieve instructions")
             })
             .collect();
 
@@ -70,12 +68,9 @@ impl SelectParser {
             .as_array()
             .expect("Impossible to retrieve ingredients")
             .iter()
-            .map(|i| {
-                String::from(
-                    i.as_str()
-                        .expect("Impossible to retrieve ingredients")
-                        .trim(),
-                )
+            .map(|text| {
+                self.get_string_field(text)
+                    .expect("Impossible to retrieve ingredients")
             })
             .collect();
 
@@ -109,11 +104,23 @@ impl SelectParser {
         } else if value.is_i64() {
             value.as_i64().map(|n| n.to_string())
         } else {
-            value
-                .as_str()
-                .map(|s| s.trim())
-                .filter(|s| !s.is_empty())
-                .map(String::from)
+            let mut text = String::new();
+            for node in Document::from(value.as_str()?).nodes {
+                if let Some(t) = &self.extract_text_from_html(&node.data) {
+                    text.push_str(t);
+                }
+            }
+            if text.is_empty() {
+                return None;
+            }
+            Some(text.trim().replace("\n", " "))
+        }
+    }
+
+    fn extract_text_from_html<'a>(&self, data: &'a Data) -> Option<&'a str> {
+        match data {
+            Data::Text(s) => Some(&s),
+            _ => None,
         }
     }
 
@@ -237,5 +244,39 @@ mod tests {
         );
         assert_eq!(recipe.recipe_yield, Some(String::from("6")));
         assert_eq!(recipe.image_url, Some(String::from("https://img.taste.com.au/UBlf4nO-/taste/2018/05/better-for-you-chicken-cacciatore-137669-2.jpg")));
+    }
+
+    #[test]
+    fn parsing_bbc_good_food() {
+        // given
+        let html = fs::read_to_string("./src/infrastructure/parser/__data__/bbc_good_food.html")
+            .expect("Something went wrong reading the file");
+        let parser = SelectParser::new();
+        let user_id = String::from("some_user_id");
+        let url = "https://www.bbcgoodfood.com/recipes/brilliant-banana-loaf";
+
+        // when
+        let recipe = parser
+            .parse_from_json_ld(url, html.as_str(), user_id.clone())
+            .expect("Can parse recipe");
+
+        // then
+        assert_eq!(recipe.user_id, user_id);
+        assert_eq!(recipe.imported_from, Some(String::from(url)));
+        assert_eq!(recipe.title, String::from("Brilliant banana loaf"));
+        assert_eq!(
+            recipe.recipe_yield,
+            Some(String::from("Cuts into 8-10 slices"))
+        );
+        assert_eq!(
+            recipe.instructions.get(0).unwrap(),
+            &String::from("Heat oven to 180C/160C fan/gas 4.")
+        );
+        assert_eq!(
+            recipe.instructions.get(1).unwrap(),
+            &String::from(
+                "Butter a 2lb loaf tin and line the base and sides with baking parchment."
+            )
+        );
     }
 }
