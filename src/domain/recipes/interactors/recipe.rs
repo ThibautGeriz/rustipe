@@ -71,7 +71,11 @@ impl RecipeInteractor {
         self.dao.get_recipe(id)
     }
 
-    pub fn get_my_recipes(&self, user_id: String) -> Result<Vec<Recipe>, Box<dyn Error>> {
-        self.dao.get_my_recipes(user_id)
+    pub fn get_my_recipes(
+        &self,
+        user_id: String,
+        query: Option<String>,
+    ) -> Result<Vec<Recipe>, Box<dyn Error>> {
+        self.dao.get_my_recipes(user_id, query)
     }
 }

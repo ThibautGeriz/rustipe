@@ -184,6 +184,46 @@ fn test_get_recipes_with_2_recipes() {
 }
 
 #[test]
+fn test_get_recipes_with_filter() {
+    // given
+    let connexion = establish_connection();
+    clean_db(&connexion).unwrap();
+    init_with_users(&connexion).unwrap();
+    let client = get_rocket_client();
+    let response_recipe_1 = client
+        .post("/graphql")
+        .header(ContentType::JSON)
+        .header(get_auth())
+        .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"lasagna\", instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
+        .dispatch();
+    assert_eq!(response_recipe_1.status(), Status::Ok);
+    let response_recipe_2 = client
+        .post("/graphql")
+        .header(ContentType::JSON)
+        .header(get_auth())
+        .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"pasta\", instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
+        .dispatch();
+    assert_eq!(response_recipe_2.status(), Status::Ok);
+
+    // when
+    let mut response = client
+        .post("/graphql")
+        .header(ContentType::JSON)
+        .header(get_auth())
+        .body(r#"{"query":"{\n  getMyRecipes(query: \"past\") {\n    title\n    instructions\n    ingredients\n  }\n}\n"}"#)
+        .dispatch();
+
+    // then
+    assert_eq!(response.status(), Status::Ok);
+    assert_eq!(response.content_type(), Some(ContentType::JSON));
+    let body = response.body_string().unwrap();
+    assert!(body.contains("pasta"));
+    assert!(!body.contains("lasagna"));
+
+    clean_db(&connexion).unwrap();
+}
+
+#[test]
 fn test_get_single_recipe() {
     // given
     let connexion = establish_connection();
