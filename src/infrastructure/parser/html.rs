@@ -118,10 +118,11 @@ impl SelectParser {
     }
 
     fn get_image(&self, value: &Value) -> Option<String> {
-        if value.is_object() {
-            self.get_string_field(&value["url"])
-        } else {
-            self.get_string_field(value)
+        match value {
+            Value::Object(_) if value.get("url") != None => self.get_string_field(&value["url"]),
+            Value::String(_) => self.get_string_field(&value),
+            Value::Array(array) if !array.is_empty() => self.get_image(array.get(0).unwrap()),
+            _ => None,
         }
     }
 }
