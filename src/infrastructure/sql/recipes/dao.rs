@@ -15,15 +15,27 @@ pub struct DieselRecipeDao {
 }
 
 impl RecipeDao for DieselRecipeDao {
-    fn get_my_recipes(&self, user_id: String) -> Result<Vec<DomainRecipe>, Box<dyn Error>> {
+    fn get_my_recipes(
+        &self,
+        user_id: String,
+        query: Option<String>,
+    ) -> Result<Vec<DomainRecipe>, Box<dyn Error>> {
         use crate::infrastructure::sql::schema::ingredients::dsl::step_number as ingredient_step_number;
         use crate::infrastructure::sql::schema::instructions::dsl::step_number as instructions_step_number;
         use crate::infrastructure::sql::schema::recipes::dsl::{
-            recipes, user_id as recipes_user_id,
+            recipes, title, user_id as recipes_user_id,
+        };
+        let q = match query {
+            Some(mut q) => {
+                q.push_str("%");
+                q
+            }
+            None => String::from("%"),
         };
 
         let recipes_results = recipes
             .filter(recipes_user_id.eq(user_id))
+            .filter(title.ilike(&q))
             .load::<Recipe>(&self.connection)?;
 
         let instructions_results = Instruction::belonging_to(&recipes_results)

@@ -130,9 +130,12 @@ impl Query {
     pub fn apiVersion() -> &str {
         "1.0"
     }
-    pub fn get_my_recipes(context: &Context) -> FieldResult<Vec<RecipeGraphQL>> {
+    pub fn get_my_recipes(
+        context: &Context,
+        query: Option<String>,
+    ) -> FieldResult<Vec<RecipeGraphQL>> {
         let user_id = context.get_user()?;
-        let recipes = (&context.recipe_interactor).get_my_recipes(user_id)?;
+        let recipes = (&context.recipe_interactor).get_my_recipes(user_id, query)?;
         Ok(recipes.iter().map(|r| RecipeGraphQL::from(r)).collect())
     }
 
