@@ -41,3 +41,33 @@ cargo clippy # run the linter
 ### Tests
 
 -   run `cargo test -- --test-threads=1`
+
+## Deployment
+
+The backend is deployed on AWS EC2 single instamce + RDS + S3 (so far).
+
+### Requirements
+
+-   [Terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli)
+-   [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html)
+
+### Usage
+
+```bash
+# Build the binary
+cargo build --release
+
+# run terraform
+cd infra/terraform
+terraform apply -var "db_password=$DB_PASSWORD"
+
+cd infra/ansible
+# install ansible dependencies (just run it once)
+ansible-galaxy install -r requirements.yml
+
+# Check that you can ping the server
+ansible all -m ping -u ec2-user -i ./inventory/hosts.cfg
+
+# run the playbook
+ansible-playbook -i inventory/hosts.cfg site.yml
+```
