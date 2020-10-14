@@ -1,0 +1,14 @@
+---
+- hosts: web
+  become: yes
+  roles:
+    - role: caddy_ansible.caddy_ansible
+      caddy_config: |
+        {
+            debug
+            auto_https disable_redirects
+        }
+        localhost:8080 {
+            respond "Hello, world!"
+        }
+
