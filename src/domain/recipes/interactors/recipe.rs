@@ -1,6 +1,7 @@
 use crate::domain::recipes::errors::RecipeError;
 use crate::domain::recipes::models::recipe::Recipe;
 use crate::domain::recipes::ports::dao::{NewRecipe, RecipeDao};
+use crate::domain::recipes::ports::image_store::ImageStore;
 use crate::domain::recipes::ports::parser::Parser;
 use std::error::Error;
 use std::marker::Send;
@@ -9,6 +10,7 @@ use std::marker::Sync;
 pub struct RecipeInteractor {
     pub dao: Box<dyn RecipeDao>,
     pub parser: Box<dyn Parser + Send + Sync>,
+    pub image_store: Box<dyn ImageStore>,
 }
 
 impl RecipeInteractor {
@@ -77,5 +79,9 @@ impl RecipeInteractor {
         query: Option<String>,
     ) -> Result<Vec<Recipe>, Box<dyn Error>> {
         self.dao.get_my_recipes(user_id, query)
+    }
+
+    pub fn get_photo_upload_url(&self, extension: &str) -> Result<String, Box<dyn Error>> {
+        self.image_store.get_photo_upload_url(extension)
     }
 }

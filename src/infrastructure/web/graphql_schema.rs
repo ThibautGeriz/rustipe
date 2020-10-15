@@ -3,6 +3,7 @@ use crate::domain::recipes::models::recipe::Recipe;
 use crate::domain::users::errors::UserError;
 use crate::domain::users::interactors::user::UserInteractor;
 use crate::infrastructure::parser::html::SelectParser;
+use crate::infrastructure::s3::image_store::S3ImageStore;
 use crate::infrastructure::sql::recipes::dao::DieselRecipeDao;
 use crate::infrastructure::sql::users::dao::DieselUserDao;
 use crate::infrastructure::web::jwt::generate_header;
@@ -103,6 +104,7 @@ impl Context {
             recipe_interactor: RecipeInteractor {
                 dao: Box::new(DieselRecipeDao::new(connection)),
                 parser: Box::new(SelectParser::new()),
+                image_store: Box::new(S3ImageStore::default()),
             },
             user_interactor: UserInteractor {
                 dao: Box::new(DieselUserDao::new(connection2)),
@@ -220,6 +222,11 @@ impl Mutation {
         let user = (&context.user_interactor).signin(email, password)?;
         let jwt_token = generate_header(user)?;
         Ok(jwt_token)
+    }
+
+    pub fn get_photo_upload_url(context: &Context, extension: String) -> FieldResult<String> {
+        let url = (&context.recipe_interactor).get_photo_upload_url(&extension)?;
+        Ok(url)
     }
 }
 
