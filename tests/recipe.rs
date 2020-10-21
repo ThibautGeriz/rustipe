@@ -31,6 +31,7 @@ fn get_database_url() -> String {
 
 fn get_rocket_client() -> Client {
     env::set_var("JWT_SECRET", "SECRET");
+    env::set_var("BUCKET_NAME", "rustipe-photos-test");
     env::set_var(
         "ROCKET_DATABASE_master",
         "{ url = \"postgres://localhost/rustipe-test\", pool_size = 1 }",
@@ -302,6 +303,39 @@ fn test_update_recipe() {
             id = id
         )))
     );
+
+    clean_db(&connexion).unwrap();
+}
+
+#[test]
+fn test_get_photo_upload_url() {
+    // given
+    let connexion = establish_connection();
+    clean_db(&connexion).unwrap();
+    init_with_users(&connexion).unwrap();
+    let client = get_rocket_client();
+
+    // when
+    let mut response = client
+        .post("/graphql")
+        .header(ContentType::JSON)
+        .header(get_auth())
+        .body(r#"{"variables":{"extension":"jpeg"},"query":"mutation ($extension: String!) {\n  getPhotoUploadUrl(extension: $extension)\n}\n"}"#)
+        .dispatch();
+
+    // then
+    assert_eq!(response.status(), Status::Ok);
+    assert_eq!(response.content_type(), Some(ContentType::JSON));
+
+    let body: Value = serde_json::from_str(&response.body_string().unwrap()).unwrap();
+    assert!(body["data"]["getPhotoUploadUrl"]
+        .as_str()
+        .unwrap()
+        .starts_with("https://rustipe-photos-test.s3-eu-west-3.amazonaws.com/"),);
+    assert!(body["data"]["getPhotoUploadUrl"]
+        .as_str()
+        .unwrap()
+        .contains(".jpeg"),);
 
     clean_db(&connexion).unwrap();
 }
