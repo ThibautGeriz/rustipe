@@ -54,6 +54,18 @@ impl UserDao for DieselUserDao {
             email: user.email.clone(),
         })
     }
+
+    fn get_user(&self, id: &str) -> Result<DomainUser, Box<dyn Error>> {
+        use crate::infrastructure::sql::schema::users::dsl::{id as db_id, users};
+
+        let users_results = users.filter(db_id.eq(id)).load::<User>(&self.connection)?;
+
+        let user: &User = users_results.first().ok_or(UserError::UserNotFound)?;
+        Ok(DomainUser {
+            id: Uuid::parse_str(user.id.as_str()).expect("Cannot parse UUID"),
+            email: user.email.clone(),
+        })
+    }
 }
 
 impl DieselUserDao {

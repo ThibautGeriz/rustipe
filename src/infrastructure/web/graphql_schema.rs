@@ -85,10 +85,12 @@ impl<'a, 'r> FromRequest<'a, 'r> for Context {
         let db_con: DbCon = request.guard::<DbCon>()?;
         // TODO: fix this, should be borrowed but lost against compiler lifetime.
         let db_con2: DbCon = request.guard::<DbCon>()?;
+        let db_con3: DbCon = request.guard::<DbCon>()?;
 
         Outcome::Success(Context::new(
             db_con.0,
             db_con2.0,
+            db_con3.0,
             user.0.map(|user_id| user_id.to_hyphenated().to_string()),
         ))
     }
@@ -96,18 +98,20 @@ impl<'a, 'r> FromRequest<'a, 'r> for Context {
 
 impl Context {
     pub fn new(
-        connection: PooledConnection<ConnectionManager<PgConnection>>,
+        connection1: PooledConnection<ConnectionManager<PgConnection>>,
         connection2: PooledConnection<ConnectionManager<PgConnection>>,
+        connection3: PooledConnection<ConnectionManager<PgConnection>>,
         user_id: Option<String>,
     ) -> Context {
         Context {
             recipe_interactor: RecipeInteractor {
-                dao: Box::new(DieselRecipeDao::new(connection)),
+                recipe_dao: Box::new(DieselRecipeDao::new(connection1)),
+                user_dao: Box::new(DieselUserDao::new(connection2)),
                 parser: Box::new(SelectParser::new()),
                 image_store: Box::new(S3ImageStore::default()),
             },
             user_interactor: UserInteractor {
-                dao: Box::new(DieselUserDao::new(connection2)),
+                dao: Box::new(DieselUserDao::new(connection3)),
             },
             user_id,
         }

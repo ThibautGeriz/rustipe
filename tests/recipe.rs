@@ -103,6 +103,18 @@ fn get_auth_user_2<'a>() -> Header<'a> {
     Header::new("Authorization", value)
 }
 
+fn get_auth_user_3<'a>() -> Header<'a> {
+    let u = User {
+        id: Uuid::parse_str("2f0194af-66e6-43f5-8e1a-2e836c9e44a6").expect("Cannot parse UUID"),
+        email: String::from("email3"),
+    };
+    let token = generate_header(u).unwrap();
+
+    let mut value = String::from("Bearer ");
+    value.push_str(&token);
+    Header::new("Authorization", value)
+}
+
 #[test]
 fn test_get_recipes_without_recipes() {
     // given
@@ -232,6 +244,45 @@ fn test_get_recipes_with_filter() {
     let body = response.body_string().unwrap();
     assert!(body.contains("pasta"));
     assert!(!body.contains("lasagna"));
+
+    clean_db(&connexion).unwrap();
+}
+
+#[test]
+fn test_get_recipes_of_unexisting_user() {
+    // given
+    let connexion = establish_connection();
+    clean_db(&connexion).unwrap();
+    init_with_users(&connexion).unwrap();
+    let client = get_rocket_client();
+    let response_recipe_1 = client
+        .post("/graphql")
+        .header(ContentType::JSON)
+        .header(get_auth_user_1())
+        .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe\", instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
+        .dispatch();
+    assert_eq!(response_recipe_1.status(), Status::Ok);
+    let response_recipe_2 = client
+        .post("/graphql")
+        .header(ContentType::JSON)
+        .header(get_auth_user_1())
+        .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe 2\", instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
+        .dispatch();
+    assert_eq!(response_recipe_2.status(), Status::Ok);
+
+    // when
+    let mut response = client
+        .post("/graphql")
+        .header(ContentType::JSON)
+        .header(get_auth_user_3())
+        .body(r#"{"query":"{\n  getMyRecipes {\n    title\n    instructions\n    ingredients\n  }\n}\n"}"#)
+        .dispatch();
+
+    // then
+    assert_eq!(response.status(), Status::Ok);
+    assert_eq!(response.content_type(), Some(ContentType::JSON));
+    let body: Value = serde_json::from_str(&response.body_string().unwrap()).unwrap();
+    assert_eq!(body["data"], Value::Null);
 
     clean_db(&connexion).unwrap();
 }
