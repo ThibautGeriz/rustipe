@@ -6,6 +6,7 @@ use crate::domain::recipes::ports::parser::Parser;
 use std::error::Error;
 use std::marker::Send;
 use std::marker::Sync;
+use uuid::Uuid;
 
 pub struct RecipeInteractor {
     pub dao: Box<dyn RecipeDao>,
@@ -59,6 +60,29 @@ impl RecipeInteractor {
             return Err(Box::new(RecipeError::RecipeDoNotbelongToUser));
         }
         self.dao.update_recipe(new_recipe)
+    }
+
+    pub fn copy_recipe(
+        &self,
+        user_id: String,
+        recipe_id: String,
+    ) -> Result<Recipe, Box<dyn Error>> {
+        let new_recipe = self.dao.get_recipe(recipe_id)?;
+        self.dao.add_recipe(NewRecipe {
+            id: Uuid::new_v4().to_hyphenated().to_string().as_str(),
+            user_id: &user_id.as_str(),
+            title: &new_recipe.title.as_str(),
+            description: new_recipe.description.as_deref(),
+            recipe_yield: new_recipe.recipe_yield.as_deref(),
+            category: new_recipe.category.as_deref(),
+            cuisine: new_recipe.cuisine.as_deref(),
+            prep_time_in_minute: (&new_recipe.prep_time_in_minute).as_ref(),
+            cook_time_in_minute: (&new_recipe.cook_time_in_minute).as_ref(),
+            instructions: new_recipe.instructions.iter().map(|s| s.as_str()).collect(),
+            ingredients: new_recipe.ingredients.iter().map(|s| s.as_str()).collect(),
+            imported_from: new_recipe.imported_from.as_deref(),
+            image_url: new_recipe.image_url.as_deref(),
+        })
     }
 
     pub fn delete_recipe(&self, id: String, user_id: String) -> Result<(), Box<dyn Error>> {
