@@ -79,10 +79,22 @@ fn init_with_users(connexion: &PgConnection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn get_auth<'a>() -> Header<'a> {
+fn get_auth_user_1<'a>() -> Header<'a> {
     let u = User {
         id: Uuid::parse_str("2f0194af-66e6-43f5-8e1a-2e836c9e44a8").expect("Cannot parse UUID"),
         email: String::from("email1"),
+    };
+    let token = generate_header(u).unwrap();
+
+    let mut value = String::from("Bearer ");
+    value.push_str(&token);
+    Header::new("Authorization", value)
+}
+
+fn get_auth_user_2<'a>() -> Header<'a> {
+    let u = User {
+        id: Uuid::parse_str("2f0194af-66e6-43f5-8e1a-2e836c9e44a7").expect("Cannot parse UUID"),
+        email: String::from("email2"),
     };
     let token = generate_header(u).unwrap();
 
@@ -103,7 +115,7 @@ fn test_get_recipes_without_recipes() {
     let mut response = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .header(get_auth())
+        .header(get_auth_user_1())
         .body(r#"{"query":"{\n  getMyRecipes {\n    title\n    instructions\n    ingredients\n  }\n}\n"}"#)
         .dispatch();
 
@@ -130,7 +142,7 @@ fn test_add_recipe() {
     let mut response = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .header(get_auth())
+        .header(get_auth_user_1())
         .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe\", instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  userId\n  }\n}\n"}"#)
         .dispatch();
 
@@ -157,14 +169,14 @@ fn test_get_recipes_with_2_recipes() {
     let response_recipe_1 = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .header(get_auth())
+        .header(get_auth_user_1())
         .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe\", instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
         .dispatch();
     assert_eq!(response_recipe_1.status(), Status::Ok);
     let response_recipe_2 = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .header(get_auth())
+        .header(get_auth_user_1())
         .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe 2\", instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
         .dispatch();
     assert_eq!(response_recipe_2.status(), Status::Ok);
@@ -173,7 +185,7 @@ fn test_get_recipes_with_2_recipes() {
     let response = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .header(get_auth())
+        .header(get_auth_user_1())
         .body(r#"{"query":"{\n  getMyRecipes {\n    title\n    instructions\n    ingredients\n  }\n}\n"}"#)
         .dispatch();
 
@@ -194,14 +206,14 @@ fn test_get_recipes_with_filter() {
     let response_recipe_1 = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .header(get_auth())
+        .header(get_auth_user_1())
         .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"lasagna\", instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
         .dispatch();
     assert_eq!(response_recipe_1.status(), Status::Ok);
     let response_recipe_2 = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .header(get_auth())
+        .header(get_auth_user_1())
         .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"pasta\", instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
         .dispatch();
     assert_eq!(response_recipe_2.status(), Status::Ok);
@@ -210,7 +222,7 @@ fn test_get_recipes_with_filter() {
     let mut response = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .header(get_auth())
+        .header(get_auth_user_1())
         .body(r#"{"query":"{\n  getMyRecipes(query: \"past\") {\n    title\n    instructions\n    ingredients\n  }\n}\n"}"#)
         .dispatch();
 
@@ -234,7 +246,7 @@ fn test_get_single_recipe() {
     let mut response_recipe_1 = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .header(get_auth())
+        .header(get_auth_user_1())
         .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe\",  instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
         .dispatch();
     assert_eq!(response_recipe_1.status(), Status::Ok);
@@ -275,7 +287,7 @@ fn test_update_recipe() {
     let mut response_recipe_1 = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .header(get_auth())
+        .header(get_auth_user_1())
         .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe\",  instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
         .dispatch();
     assert_eq!(response_recipe_1.status(), Status::Ok);
@@ -286,7 +298,7 @@ fn test_update_recipe() {
     let mut response = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .header(get_auth())
+        .header(get_auth_user_1())
         .body(format!(
             r#"{{"query":"mutation {{\n  updateRecipe(id:\"{id}\", newRecipe: {{ title: \"my recipe2\", description:\"my desc\" instructions: [\"ins3\", \"ins4\"], ingredients: [\"ing1\", \"ing2\"]}}) {{\n    id\n   title ingredients\n    description\n    instructions\n  }}\n}}\n"}}"#,
             id = id
@@ -308,6 +320,47 @@ fn test_update_recipe() {
 }
 
 #[test]
+fn test_copy_recipe() {
+    // given
+    let connexion = establish_connection();
+    clean_db(&connexion).unwrap();
+    init_with_users(&connexion).unwrap();
+    let client = get_rocket_client();
+    let mut response_recipe_1 = client
+        .post("/graphql")
+        .header(ContentType::JSON)
+        .header(get_auth_user_1())
+        .body(r#"{"query":"mutation {\n  createRecipe(newRecipe: {title: \"my recipe\",  instructions: [\"ins1\", \"ins2\"], ingredients: [\"ing1\", \"ing2\"]}) {\n    id\n   title ingredients\n    description\n    instructions\n  }\n}\n"}"#)
+        .dispatch();
+    assert_eq!(response_recipe_1.status(), Status::Ok);
+    let body: Value = serde_json::from_str(&response_recipe_1.body_string().unwrap()).unwrap();
+    let id: &str = &body["data"]["createRecipe"]["id"].as_str().unwrap();
+
+    // when
+    let mut response = client
+        .post("/graphql")
+        .header(ContentType::JSON)
+        .header(get_auth_user_2())
+        .body(format!(
+            r#"{{"query":"mutation {{\n  copyRecipe(recipeId:\"{id}\") {{\n    userId\n   title ingredients\n    description\n    instructions\n  }}\n}}\n"}}"#,
+            id = id
+        ))
+        .dispatch();
+
+    // then
+    assert_eq!(response.status(), Status::Ok);
+    assert_eq!(response.content_type(), Some(ContentType::JSON));
+    assert_eq!(
+        response.body_string(),
+        Some(String::from(
+            "{\"data\":{\"copyRecipe\":{\"userId\":\"2f0194af-66e6-43f5-8e1a-2e836c9e44a7\",\"title\":\"my recipe\",\"ingredients\":[\"ing1\",\"ing2\"],\"description\":null,\"instructions\":[\"ins1\",\"ins2\"]}}}",
+        ))
+    );
+
+    clean_db(&connexion).unwrap();
+}
+
+#[test]
 fn test_get_photo_upload_url() {
     // given
     let connexion = establish_connection();
@@ -319,7 +372,7 @@ fn test_get_photo_upload_url() {
     let mut response = client
         .post("/graphql")
         .header(ContentType::JSON)
-        .header(get_auth())
+        .header(get_auth_user_1())
         .body(r#"{"variables":{"extension":"jpeg"},"query":"mutation ($extension: String!) {\n  getPhotoUploadUrl(extension: $extension)\n}\n"}"#)
         .dispatch();
 

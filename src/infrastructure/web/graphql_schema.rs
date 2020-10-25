@@ -211,6 +211,12 @@ impl Mutation {
         Ok(RecipeGraphQL::from(&recipe))
     }
 
+    fn copyRecipe(context: &Context, recipe_id: String) -> FieldResult<RecipeGraphQL> {
+        let user_id = context.get_user()?;
+        let recipe = (&context.recipe_interactor).copy_recipe(user_id, recipe_id)?;
+        Ok(RecipeGraphQL::from(&recipe))
+    }
+
     fn signup(context: &Context, email: String, password: String) -> FieldResult<String> {
         let id = Uuid::new_v4();
         let user = (&context.user_interactor).signup(id, email, password)?;
