@@ -8,5 +8,8 @@ pub trait UserDao {
         email: String,
         password_hash: String,
     ) -> Result<User, Box<dyn Error>>;
+
     fn signin(&self, email: String, password_hash: String) -> Result<User, Box<dyn Error>>;
+
+    fn get_user(&self, id: &str) -> Result<User, Box<dyn Error>>;
 }

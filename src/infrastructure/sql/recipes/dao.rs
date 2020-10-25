@@ -17,7 +17,7 @@ pub struct DieselRecipeDao {
 impl RecipeDao for DieselRecipeDao {
     fn get_my_recipes(
         &self,
-        user_id: String,
+        user_id: &str,
         query: Option<String>,
     ) -> Result<Vec<DomainRecipe>, Box<dyn Error>> {
         use crate::infrastructure::sql::schema::ingredients::dsl::step_number as ingredient_step_number;

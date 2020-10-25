@@ -21,7 +21,7 @@ pub struct NewRecipe<'a> {
 pub trait RecipeDao {
     fn get_my_recipes(
         &self,
-        user_id: String,
+        user_id: &str,
         query: Option<String>,
     ) -> Result<Vec<Recipe>, Box<dyn Error>>;
     fn get_recipe(&self, id: String) -> Result<Recipe, Box<dyn Error>>;
