@@ -1,0 +1,39 @@
+version: "3.8"
+services:
+  web:
+    build: ../..
+    ports:
+      - "8000:8000"
+    environment:
+        - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+        - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+        - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+        - JWT_SECRET=${JWT_SECRET}
+        - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+        - ROCKET_DATABASES={master={url="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}", pool_size = 10}}
+    command: ["./wait-for-it.sh", "postgres:5432", "--", "./web_server"]
+
+
+  diesel:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.diesel
+    environment:
+        - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    command: ["./wait-for-it.sh", "postgres:5432", "--", "diesel", "migration", "run"]
+
+
+  postgres:
+    image: postgres
+    environment:
+        - POSTGRES_DB=${POSTGRES_DB}
+        - POSTGRES_USER=${POSTGRES_USER}
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+        - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+        - ~/rustipe/data:/var/lib/postgresql/data
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
