@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "helm.fullname" . }}-secrets
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: {{ .Values.aws.access_key_id }}
+  AWS_SECRET_ACCESS_KEY: {{ .Values.aws.secret_access_key }}
+  AWS_DEFAULT_REGION: {{ .Values.aws.default_region }}
+  JWT_SECRET: {{ .Values.jwt.secret }}
+  ROCKET_DATABASES: '{master={url="postgres://{{ .Values.db.user }}:{{ .Values.db.password }}@{{ .Values.db.host }}:{{ .Values.db.port }}/{{ .Values.db.name }}", pool_size = {{ .Values.db.pool_size }} } }'

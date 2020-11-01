@@ -41,3 +41,8 @@ cargo clippy # run the linter
 ### Tests
 
 -   run `cargo test -- --test-threads=1`
+
+
+## Deploy the app
+
+See in the [infra repository](./infra)
