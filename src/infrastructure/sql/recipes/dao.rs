@@ -1,4 +1,5 @@
 use crate::diesel::prelude::*;
+use crate::domain::recipes::errors::RecipeError;
 use crate::domain::recipes::models::recipe::Recipe as DomainRecipe;
 use crate::domain::recipes::ports::dao::{NewRecipe as DomainNewRecipe, RecipeDao};
 use crate::infrastructure::sql::models::*;
@@ -121,7 +122,11 @@ impl RecipeDao for DieselRecipeDao {
                 }
             })
             .collect();
-        Ok(results.into_iter().last().unwrap())
+        let r = results
+            .into_iter()
+            .last()
+            .ok_or(RecipeError::RecipeNotFound)?;
+        Ok(r)
     }
 
     fn delete_recipe(&self, id: String) -> Result<(), Box<dyn Error>> {
