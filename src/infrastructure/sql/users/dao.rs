@@ -1,4 +1,6 @@
 use crate::diesel::prelude::*;
+use crate::diesel::result::DatabaseErrorKind;
+use crate::diesel::result::Error as DieselError;
 use crate::domain::users::errors::UserError;
 use crate::domain::users::models::user::User as DomainUser;
 use crate::domain::users::ports::dao::UserDao;
@@ -31,7 +33,13 @@ impl UserDao for DieselUserDao {
 
         let inserted_user: User = diesel::insert_into(users::table)
             .values(&new_user_sql)
-            .get_result(&self.connection)?;
+            .get_result(&self.connection)
+            .map_err(|err| match err {
+                DieselError::DatabaseError(DatabaseErrorKind::UniqueViolation, _) => {
+                    UserError::UserAlreadyExists
+                }
+                _ => UserError::Unknown,
+            })?;
 
         Ok(DomainUser {
             id: Uuid::parse_str(inserted_user.id.as_str()).expect("Cannot parse UUID"),
