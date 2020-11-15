@@ -27,7 +27,7 @@ impl RecipeDao for DieselRecipeDao {
         };
         let q = match query {
             Some(mut q) => {
-                q.push_str("%");
+                q.push('%');
                 q
             }
             None => String::from("%"),
