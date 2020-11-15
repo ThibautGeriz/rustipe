@@ -1,0 +1,29 @@
+FROM rustlang/rust:nightly
+
+ARG APP=/usr/src/app
+
+RUN apt-get update \
+    && apt-get install -y ca-certificates tzdata libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+EXPOSE 8000
+
+ENV TZ=Etc/UTC \
+    APP_USER=appuser
+
+RUN groupadd $APP_USER \
+    && useradd -g $APP_USER $APP_USER \
+    && mkdir -p ${APP}
+
+RUN cargo install diesel_cli --no-default-features --features "postgres"
+
+COPY ./migrations ${APP}/migrations
+
+ADD https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh ${APP}/wait-for-it.sh
+RUN chmod +x ${APP}/wait-for-it.sh
+
+RUN chown -R $APP_USER:$APP_USER ${APP}
+
+USER $APP_USER
+WORKDIR ${APP}
+

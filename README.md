@@ -4,6 +4,8 @@ API to expose recipe stored in Postgres
 
 ## Requirements
 
+### Rust
+
 [Install RUST](https://www.rust-lang.org/en-US/install.html):
 
 ```bash
@@ -11,16 +13,17 @@ curl https://sh.rustup.rs -sSf | sh
 rustup default nightly # use nightly for rocket
 rustup component add clippy # install linter
 rustup component add rustfmt # install formatter
-cargo install diesel_cli # install ORM CLI
-echo "DATABASE_URL=postgres://localhost/rustipe
-JWT_SECRET=secret" > .env # setup local conf
 ```
 
-You will also need to [install postgresSQL](https://www.postgresql.org/download/) and init 2 database
+### Docker
+
+[Install Docker](https://docs.docker.com/get-docker/)
 
 ```bash
-diesel setup --database-url postgres://localhost/rustipe
+# run dependencies
+docker-compose up
 ```
+
 
 ## Commands
 
@@ -41,3 +44,8 @@ cargo clippy # run the linter
 ### Tests
 
 -   run `cargo test -- --test-threads=1`
+
+
+## Deploy the app
+
+See in the [infra repository](./infra)

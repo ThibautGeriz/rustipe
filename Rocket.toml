@@ -3,4 +3,4 @@ address = "0.0.0.0"
 
 
 [global.databases]
-master = { url = "postgres://localhost/rustipe", pool_size = 10 }
+master = { url = "postgres://rustipe:toto@localhost/rustipe", pool_size = 10 }

@@ -1,0 +1,30 @@
+version: "3.8"
+services:
+  diesel:
+    build:
+      context: .
+      dockerfile: Dockerfile.diesel
+    environment:
+        - DATABASE_URL=postgres://rustipe:toto@postgres:5432/rustipe
+    command: ["./wait-for-it.sh", "postgres:5432", "--", "diesel", "migration", "run"]
+
+
+  postgres:
+    image: postgres
+    ports:
+      - "5432:5432"
+    environment:
+        - POSTGRES_DB=rustipe
+        - POSTGRES_USER=rustipe
+        - POSTGRES_PASSWORD=toto
+        - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+        - postgres:/var/lib/postgresql/data
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U rustipe"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+volumes:
+  postgres:
